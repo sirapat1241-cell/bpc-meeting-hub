@@ -466,6 +466,7 @@ var IC={
   sheet:'<svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11"/><path d="M2.5 6.5h11M2.5 10h11M6.5 2.5v11"/></svg>',
   disk:'<svg viewBox="0 0 16 16"><path d="M2.5 2.5h9l2 2v9h-11z"/><path d="M5 2.5v3.5h6V2.5M5 13.5V9.5h6v4"/></svg>',
   chev:'<svg viewBox="0 0 12 12"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg>',
+  cam:'<svg viewBox="0 0 16 16" style="width:15px;height:15px"><rect x="1.5" y="4" width="9" height="8" rx="1"/><path d="M10.5 7l4-2.5v7l-4-2.5"/></svg>',
   search:'<svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>'
 };
 
@@ -494,7 +495,7 @@ function norm(s){
   s.meta=s.meta||{};var m=s.meta;
   if(!m.company)m.company='BOAT PATTANA CONSTRUCTION';
   m.projects=m.projects||[];m.people=m.people||[];m.preparedBy=m.preparedBy||'';
-  if(m.meetDay==null)m.meetDay=1;m.meetTime=m.meetTime||'09:00';m.urgentDays=+m.urgentDays||7;
+  if(m.meetDay==null)m.meetDay=1;m.meetLink=m.meetLink||'';m.meetTime=m.meetTime||'09:00';m.urgentDays=+m.urgentDays||7;
   s.depts=s.depts||[];s.depts.forEach(function(d){d.topics=d.topics||[];d.minutes=+d.minutes||10;d.procure=!!d.procure;});
   s.items=s.items||[];s.items.forEach(function(i){i.priority=i.priority||'mid';i.progress=+i.progress||0;i.stage=+i.stage||0;i.history=i.history||[];
     ['needDate','qty','unit','supplier','po','note','owner','project','due','title'].forEach(function(k){if(i[k]==null)i[k]='';});});
@@ -566,7 +567,7 @@ function overviewHtml(){
   var cnt={};ORDER.forEach(function(k){cnt[k]=items.filter(function(i){return i.status===k;}).length;});
   var nm=nextMeeting(),w=weekNo(monday(TODAY)),A=agendaList(),t0=(function(){var p=S.meta.meetTime.split(':');return (+p[0]||9)*60+(+p[1]||0);})(),acc=0,n=0;
   var h=notesHtml()+'<div class="ov">';
-  h+='<section class="panel hero c8 rise" style="--i:'+(n++)+'"><div><span class="lb">ประชุมติดตามงานครั้งถัดไป</span><h1>วัน'+DAYF[nm.getDay()]+'ที่ '+dFull(lIso(nm))+' เวลา '+S.meta.meetTime+' น.</h1><div class="cd" id="cd">'+cdHtml()+'</div><div class="acts"><button class="btn pri" data-act="start-meet">เริ่มประชุมตามวาระ</button><a class="btn q" href="#report">เปิดรายงานสัปดาห์ที่ '+w.w+'</a></div></div><ol class="ag">'+
+  h+='<section class="panel hero c8 rise" style="--i:'+(n++)+'"><div><span class="lb">ประชุมติดตามงานครั้งถัดไป</span><h1>วัน'+DAYF[nm.getDay()]+'ที่ '+dFull(lIso(nm))+' เวลา '+S.meta.meetTime+' น.</h1><div class="cd" id="cd">'+cdHtml()+'</div><div class="acts">'+(S.meta.meetLink?'<a class="btn pri join" href="'+esc(S.meta.meetLink)+'" target="_blank" rel="noopener">'+IC.cam+'เข้าห้องประชุม</a>':'<a class="btn q edit" href="#setup" data-act="set-link">'+IC.cam+'ใส่ลิงก์ห้องประชุม</a>')+'<button class="btn'+(S.meta.meetLink?'':' pri')+'" data-act="start-meet">เริ่มประชุมตามวาระ</button><a class="btn q" href="#report">เปิดรายงานสัปดาห์ที่ '+w.w+'</a></div></div><ol class="ag">'+
     A.map(function(a){var L=items.filter(function(i){return i.dept===a.id;}),bad=L.filter(function(i){return isOver(i)||i.status==='delayed'||isUrgent(i);}).length,s='<li><time>'+hhmm(t0+acc)+'</time><span>'+esc(a.name)+'</span><small>'+(a.id.charAt(0)==='_'?a.min+' นาที':L.length+' รายการ'+(bad?' · <em>'+bad+' ต้องเร่ง</em>':''))+'</small></li>';acc+=a.min;return s;}).join('')+'<li><time>'+hhmm(t0+acc)+'</time><span>จบการประชุม</span><small>'+acc+' นาที</small></li></ol></section>';
   h+='<div class="kpis c4"><button class="kpi rise" style="--i:'+(n++)+'" data-act="jump" data-v=""><span class="lb">งานที่ยังเปิดอยู่</span><b data-count="'+open.length+'">'+open.length+'</b><small>จากทั้งหมด '+total+' รายการ</small></button>'+
     '<div class="kpi rise" style="--i:'+(n++)+'"><span class="lb">คืบหน้าเฉลี่ย</span><div class="kr"><b data-count="'+avg+'" data-suf="%">'+avg+'%</b>'+ring(avg)+'</div><small>ทุกฝ่ายรวมกัน</small></div>'+
@@ -671,7 +672,7 @@ function setupHtml(){
   S.depts.forEach(function(d,x){var used=S.items.some(function(i){return i.dept===d.id;});
     h+='<div class="dcard rise" style="--i:'+x+'" data-dept="'+d.id+'"><div class="r"><input class="box" data-f="name" data-k="dp:'+d.id+':name" value="'+esc(d.name)+'" aria-label="ชื่อฝ่าย"><select class="box" data-f="minutes" data-k="dp:'+d.id+':min" aria-label="เวลาวาระ">'+opts([5,10,15,20,30,45].map(function(v){return [String(v),v+' นาที'];}),String(d.minutes))+'</select></div><div class="r"><label class="ck"><input type="checkbox" data-f="procure" data-k="dp:'+d.id+':pr"'+(d.procure?' checked':'')+'>ติดตามขั้นตอนจัดซื้อและวันใช้หน้างาน</label>'+(used?'':'<button class="btn bad" data-act="del-dept">ลบฝ่าย</button>')+'</div><label>หัวข้อที่ต้องถาม (บรรทัดละหัวข้อ)<textarea class="box" data-f="topics" data-k="dp:'+d.id+':tp" rows="5">'+esc(d.topics.join('\n'))+'</textarea></label></div>';});
   h+='<button class="btn" data-act="add-dept">+ เพิ่มฝ่าย</button></div><div>'+
-   '<h3>การประชุมและการแจ้งเตือน</h3><div class="grid3"><label>ประชุมทุกวัน<select class="box" data-meta="meetDay" data-k="meta:day">'+opts(DAYF.map(function(d,x){return [String(x),d];}),String(S.meta.meetDay))+'</select></label><label>เวลาเริ่ม<input type="time" class="box" data-meta="meetTime" data-k="meta:time" value="'+esc(S.meta.meetTime)+'"></label><label>ต้องรีบสั่งเมื่อใช้หน้างานภายใน<select class="box" data-meta="urgentDays" data-k="meta:urg">'+opts([3,5,7,10,14].map(function(v){return [String(v),v+' วัน'];}),String(S.meta.urgentDays))+'</select></label></div>'+
+   '<h3>การประชุมและการแจ้งเตือน</h3><div class="grid3"><label>ประชุมทุกวัน<select class="box" data-meta="meetDay" data-k="meta:day">'+opts(DAYF.map(function(d,x){return [String(x),d];}),String(S.meta.meetDay))+'</select></label><label>เวลาเริ่ม<input type="time" class="box" data-meta="meetTime" data-k="meta:time" value="'+esc(S.meta.meetTime)+'"></label><label>ต้องรีบสั่งเมื่อใช้หน้างานภายใน<select class="box" data-meta="urgentDays" data-k="meta:urg">'+opts([3,5,7,10,14].map(function(v){return [String(v),v+' วัน'];}),String(S.meta.urgentDays))+'</select></label></div><label style="margin-top:10px">ลิงก์ห้องประชุม (Google Meet หรือ Zoom) แสดงเป็นปุ่ม "เข้าห้องประชุม" บนหน้าภาพรวม<input class="box" type="url" data-meta="meetLink" data-k="meta:link" value="'+esc(S.meta.meetLink)+'" placeholder="เช่น https://meet.google.com/abc-defg-hij" inputmode="url"></label>'+
    membersHtml()+'<h3 style="margin-top:18px">บริษัท โครงการ และทีมงาน</h3><label>ชื่อบริษัทบนหัวเว็บ<input class="box" data-meta="company" data-k="meta:co" value="'+esc(S.meta.company)+'"></label><span class="lb">โครงการจากระบบหลักของบริษัท (เลือกได้อัตโนมัติ)</span><div class="dbp">'+(PROJ_DB.length?PROJ_DB.map(function(p){return '<span class="tag">'+esc(p)+'</span>';}).join(''):'<span class="tag">ไม่มี</span>')+'</div><label>โครงการเพิ่มเติม (บรรทัดละโครงการ)<textarea class="box" data-meta="projects" data-k="meta:pj" rows="4">'+esc(S.meta.projects.join('\n'))+'</textarea></label>'+
    '<label>ชื่อผู้รับผิดชอบเพิ่มเติม นอกจากคนที่มีสิทธิ์เข้าระบบ (บรรทัดละคน เขียนแบบ ชื่อ | ตำแหน่ง)<textarea class="box" data-meta="people" data-k="meta:pp" rows="6">'+esc(S.meta.people.map(function(p){return p.name+(p.role?' | '+p.role:'');}).join('\n'))+'</textarea></label>'+
    '<h3 style="margin-top:18px">ข้อมูล</h3><p class="sub">ข้อมูลทั้งหมดเก็บในฐานข้อมูลกลางและบันทึกอัตโนมัติทุกครั้งที่แก้ ดาวน์โหลดสำรองเป็นไฟล์ได้</p><div class="acts"><button class="btn" data-act="exp-json">สำรองข้อมูล (.json)</button></div></div></div></section>';
@@ -768,6 +769,7 @@ function field(t){var f=t.dataset.f,host;
     if(mk==='projects')mv=t.value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
     else if(mk==='people')mv=t.value.split('\n').map(function(s){var p=s.split('|');return {name:p[0].trim(),role:(p[1]||'').trim()};}).filter(function(p){return p.name;});
     else if(mk==='meetDay'||mk==='urgentDays')mv=+t.value;else mv=t.value.trim();
+    if(mk==='meetLink'&&mv&&!/^https?:\/\//i.test(mv))mv='https://'+mv;
     if(JSON.stringify(S.meta[mk])!==JSON.stringify(mv)){mutate(function(){S.meta[mk]=mv;});later();}return;}
   if(!f)return;
   if((host=t.closest('[data-id]'))){var i=item(host.dataset.id);if(i&&setItem(i,f,t.value))later();return;}
@@ -782,6 +784,7 @@ function removeItem(it){var el=document.querySelector('.row[data-id="'+it.id+'"]
 function doUndo(){if(!undo.length){toast('ไม่มีอะไรให้ย้อนกลับ');return;}S=JSON.parse(undo.pop());keep();rerender();toast('ย้อนกลับแล้ว');}
 function summaryText(){var w=weekNo(WK),all=visible(),m=minutesOf(WK),L=[],urg=all.filter(isUrgent);
   L.push('รายงานติดตามงาน สัปดาห์ที่ '+w.w+' ('+range(WK)+')'+(F.project?' · '+F.project:''));
+  if(S.meta.meetLink)L.push('ห้องประชุม: '+S.meta.meetLink);
   L.push('รวม '+all.length+' รายการ: '+ORDER.map(function(k){return ST[k]+' '+all.filter(function(i){return i.status===k;}).length;}).join(' · '));
   if(urg.length){L.push('');L.push('⚠ ต้องรีบสั่ง (ใช้หน้างานใน '+S.meta.urgentDays+' วัน ยังไม่ออก PO)');urg.forEach(function(i){L.push('• '+i.title+' · ใช้ '+dShort(i.needDate)+' · ขั้น'+STAGES[i.stage]+(i.owner?' · '+i.owner:''));});}
   S.depts.forEach(function(d){var r=all.filter(function(i){return i.dept===d.id;}).sort(sorter);if(!r.length)return;L.push('');L.push('['+d.name+']');
@@ -847,6 +850,7 @@ document.addEventListener('click',function(e){
   else if(a==='dup'&&it)dupItem(it);
   else if(a==='del'&&it)removeItem(it);
   else if(a==='wk'){WK=v==='0'?monday(TODAY):addDays(WK,7*(+v));try{sessionStorage.setItem('bpc-wk',WK);}catch(x){}rerender();}
+  else if(a==='set-link'){e.preventDefault();go('setup');setTimeout(function(){var f=document.querySelector('[data-meta="meetLink"]');if(f){f.scrollIntoView({block:'center'});f.focus();}},80);}
   else if(a==='goto'){WK=v;try{sessionStorage.setItem('bpc-wk',WK);}catch(x){}go('report');}
   else if(a==='goto-dept'){e.preventDefault();pendingScroll=v;F.status='';go('report');}
   else if(a==='jump'){F.status=v;F.q='';go('report');}
