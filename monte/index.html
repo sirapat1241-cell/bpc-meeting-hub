@@ -227,7 +227,7 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
    '<div><span class="lb">รอบรายงาน</span><b class="big">สัปดาห์ที่ '+weekNo(WK)+'</b><p>ข้อมูล ณ วันที่ '+ds(c)+'</p></div>'+
    '<div><span class="lb">วันประชุม</span><input type="date" class="box mono" data-rep="meet_date" value="'+esc(R.meet_date||'')+'"'+(cw?'':' disabled')+' aria-label="วันประชุม" style="width:100%"></div>'+
    '<div><span class="lb">ผู้เข้าประชุม</span><input class="box" data-rep="attendees" value="'+esc(R.attendees||'')+'" placeholder="รายชื่อผู้เข้าประชุม"'+(cw?'':' disabled')+' style="width:100%"></div></div>'+
-   '<nav class="agnav"><a href="#own">ผู้รับผิดชอบงาน</a><a href="#a1">1. ภาพรวมโครงการ</a><a href="#a2">2. แยกตาม Phase</a><a href="#a3">3. รายอาคาร</a><a href="#a4">4. ตามแผนงาน</a><a href="#a5">5. งานล่าช้า</a><a href="#a6">6. ปัญหาและอุปสรรค</a><a href="#a7">7. งานเพิ่ม-ลด</a><a href="#a8">8. การเบิกงวดงาน</a><a href="#a9">9. แผน 2 สัปดาห์ถัดไป</a><a href="#a10">10. มติที่ประชุม</a></nav></section>';
+   '<nav class="agnav"><a href="#own">ผู้รับผิดชอบงาน</a><a href="#a1">1. ภาพรวมโครงการ</a><a href="#a2">2. แยกตาม Phase</a><a href="#a3">3. รายอาคาร</a><a href="#a4">4. ตามแผนงาน</a><a href="#a5">5. งานล่าช้า</a><a href="#a6">6. ปัญหาและอุปสรรค</a><a href="#a7">7. งานเพิ่ม-ลด</a><a href="#a8">8. แผน 2 สัปดาห์ถัดไป</a><a href="#a9">9. มติที่ประชุม</a></nav></section>';
   h+='<section class="sheet ag first" id="own"><div class="dh"><h2>ผู้รับผิดชอบงาน</h2><span class="ct">'+(cw?'กรอกชื่อได้หลายคน คั่นด้วยเครื่องหมายจุลภาค ใช้ร่วมกันทุกสัปดาห์ และแสดงในทุกวาระ':'ดูอย่างเดียว')+'</span></div><div class="own">'+
    CATS.map(function(c){var n=TASKS.filter(function(t){return t.k===c[0];}).length;return '<label>'+c[1]+' <small>'+c[2]+' · '+n+' รายการ</small>'+(cw?'<input class="box" data-own="'+c[0]+'" value="'+esc(OWN[c[0]]||'')+'" placeholder="เช่น คุณสมชาย (SM), ผู้รับเหมา ABC">':'<b style="color:var(--ink);font-weight:500">'+esc(OWN[c[0]]||'-')+'</b>')+'</label>';}).join('')+'</div></section>';
   /* 1 overview */
@@ -303,23 +303,13 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
     return '<tr>'+fld('vo',x,'no','VO-01',70)+fld('vo',x,'title','รายละเอียดงาน',220)+'<td>'+sel('vo',x,'kind',[['add','งานเพิ่ม'],['cut','งานลด']])+'</td><td>'+sel('vo',x,'area',AREAS.map(function(a){return [a,a];}),'— เลือก —')+'</td>'+fld('vo',x,'days','0',60,'number')+fld('vo',x,'submit_date','',0,'date')+'<td>'+sel('vo',x,'status',VOST)+'</td>'+fld('vo',x,'owner','ชื่อ',110)+fld('vo',x,'note','',150)+
      (MV?'<td><input class="box pin mono" style="width:120px" type="number" step="0.01" data-k="voa:'+x.id+'" data-voamt="'+x.id+'" value="'+(VOAMT[x.id]!=null?VOAMT[x.id]:'')+'"></td>':'')+(cw?'<td><button class="btn q" data-act="vo-del" data-v="'+x.id+'" title="ลบ">ลบ</button></td>':'')+'</tr>';}).join('')+'</tbody></table></div>';
   h+='<p class="empty noprint">มูลค่างานเพิ่ม-ลดเก็บแยก อ่านและแก้ไขได้เฉพาะผู้ดูแล (กด "แสดงยอดเงิน")</p></section>';
-  /* 8 payment claims from BPC meeting hub */
-  var CL=CLAIMS.slice().sort(function(a,b){return (a.inv.due||'9999').localeCompare(b.inv.due||'9999');}),cst=[0,0,0,0],cdone=0;
-  CL.forEach(function(i){var n=ivInfo(i);if(n.cur<0)cdone++;else cst[n.cur]++;});
-  h+='<section class="sheet ag" id="a8"><div class="dh"><span class="no">วาระที่ 8</span><h2>การเบิกงวดงาน</h2><span class="ct">ดึงจากศูนย์ข้อมูลการประชุม BPC (รายการโครงการ Monte ที่ติดตามงวดงาน) · '+CL.length+' งวด</span></div>'+
-   '<div class="kpis" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:12px">'+IVS.map(function(s2,x){return '<div class="kpi'+(cst[x]?' br':'')+'"><span class="lb">รอที่ '+(x+1)+'. '+s2+'</span><b>'+cst[x]+'</b></div>';}).join('')+'<div class="kpi ok"><span class="lb">ออก Invoice แล้ว</span><b>'+cdone+'</b></div></div>';
-  if(!CL.length)h+='<p class="empty">ยังไม่มีงวดงานของโครงการ Monte ไปที่ <a href="../#invoice">ศูนย์ประชุม → งวดงาน / Invoice</a> แล้วเพิ่มงวดงาน โดยเลือกโครงการ Monte</p>';
-  else h+='<div class="wrapx"><table class="tbl"><thead><tr><th>งวด</th><th>รายการ</th><th>กำหนดส่ง</th>'+IVS.map(function(s2,x){return '<th>'+(x+1)+'. '+s2+'</th>';}).join('')+'<th>สถานะ / Invoice</th>'+(MV?'<th class="num">ยอด (บาท)</th>':'')+'</tr></thead><tbody>'+CL.map(function(i){var v=i.inv,n=ivInfo(i),lt=n.cur>=0&&v.due&&v.due<c;
-    return '<tr><td class="c">'+esc(v.no||'-')+'</td><td>'+esc(i.title||'(ยังไม่ตั้งชื่อ)')+'<span class="who2 none">'+esc(i.owner||'')+'</span></td><td class="mono" style="font-size:12.5px;white-space:nowrap'+(lt?';color:var(--bad)':'')+'">'+(v.due?ds(v.due):'-')+(lt?' (เลย)':'')+'</td>'+
-     v.steps.map(function(st){return '<td><span class="tag '+IVC[st]+'">'+IVT[st]+'</span></td>';}).join('')+'<td>'+(n.cur<0?'<b style="color:var(--ok)">ออก Invoice แล้ว</b><span class="who2 none">'+esc(v.invNo||'')+'</span>':(n.cur+1)+'. '+IVS[n.cur])+'</td>'+(MV?'<td class="num">'+(v.amount?money(+String(v.amount).replace(/,/g,'')):'-')+'</td>':'')+'</tr>';}).join('')+'</tbody></table></div>';
-  h+='<p class="empty noprint">อัปเดตสถานะงวดงานได้ที่ <a href="../#invoice">ศูนย์ประชุม → งวดงาน / Invoice</a></p></section>';
   /* 6 next 2 weeks */
   var n1=add(c,1),n2=add(c,14),nx=TASKS.filter(function(t){return t.s<=n2&&t.e>=n1&&act(t.c,WK)<100;}).sort(function(a,b){return a.s.localeCompare(b.s);});
-  h+='<section class="sheet ag" id="a9"><div class="dh"><span class="no">วาระที่ 9</span><h2>แผนงาน 2 สัปดาห์ถัดไป</h2><span class="ct">'+ds(n1)+' – '+ds(n2)+' · ดึงจากแผน Rev.1</span></div><div class="two" style="margin-top:0"><div class="blk"><h3>งานที่ต้องทำตามแผน ('+nx.length+' รายการ)</h3>'+
+  h+='<section class="sheet ag" id="a8"><div class="dh"><span class="no">วาระที่ 8</span><h2>แผนงาน 2 สัปดาห์ถัดไป</h2><span class="ct">'+ds(n1)+' – '+ds(n2)+' · ดึงจากแผน Rev.1</span></div><div class="two" style="margin-top:0"><div class="blk"><h3>งานที่ต้องทำตามแผน ('+nx.length+' รายการ)</h3>'+
    (nx.length?'<ul class="lst">'+nx.map(function(t){var bn=t.b?(PLAN.bldg.find(function(b){return b.c===t.b;})||{}).n+' – ':'';return '<li><span>'+t.c+' '+esc(bn+t.n)+'<small>'+(t.s>=n1?'เริ่ม '+ds(t.s):'ต่อเนื่อง')+' · เสร็จ '+ds(t.e)+' · ปัจจุบัน '+f1(act(t.c,WK))+'%'+whoLine(t)+'</small></span><span class="num">เป้า '+f1(planPct(t,n2))+'%</span></li>';}).join('')+'</ul>':'<p class="empty">ไม่มีงานตามแผนในช่วงนี้</p>')+'</div>'+
    '<div class="blk"><h3>แผนงาน / การเตรียมการเพิ่มเติม</h3><textarea class="box" data-rep="next_plan" rows="8" placeholder="เช่น สั่งวัสดุ กำลังคน เครื่องจักร"'+(cw?'':' disabled')+'>'+esc(R.next_plan||'')+'</textarea></div></div></section>';
   /* 7 decisions */
-  h+='<section class="sheet ag" id="a10"><div class="dh"><span class="no">วาระที่ 10</span><h2>มติที่ประชุม และงานที่มอบหมาย</h2></div><textarea class="box" data-rep="decisions" rows="7" placeholder="บรรทัดละหนึ่งมติ เช่น เร่งงานโครงสร้าง Retail กลุ่ม 2 ให้ทันแผน — ผู้รับผิดชอบ / กำหนดเสร็จ"'+(cw?'':' disabled')+'>'+esc(R.decisions||'')+'</textarea>'+
+  h+='<section class="sheet ag" id="a9"><div class="dh"><span class="no">วาระที่ 9</span><h2>มติที่ประชุม และงานที่มอบหมาย</h2></div><textarea class="box" data-rep="decisions" rows="7" placeholder="บรรทัดละหนึ่งมติ เช่น เร่งงานโครงสร้าง Retail กลุ่ม 2 ให้ทันแผน — ผู้รับผิดชอบ / กำหนดเสร็จ"'+(cw?'':' disabled')+'>'+esc(R.decisions||'')+'</textarea>'+
    '<p class="empty noprint">แผนงานอ้างอิง: แผนงานก่อสร้าง MONTE AVENUE Rev.1 (11 พ.ย. 2569) · % ตามแผนคำนวณแบบเส้นตรงตามวันเริ่ม–วันเสร็จของแต่ละกิจกรรม ณ วันสิ้นสัปดาห์</p></section></main>';
   h+='<div class="dlg" id="dlg" hidden><div class="dbox" id="dbox"></div></div><div class="toast" id="toast" hidden></div>';
   var y=window.scrollY,a=document.activeElement,k=a&&(a.dataset.k||a.dataset.pct||a.dataset.note||a.dataset.rep||a.dataset.own||a.id);
@@ -343,7 +333,6 @@ function lineText(){var c=cut(WK),R=REP[WK]||{},L=[],PP=agg(TASKS,function(t){re
   if(LT.length){L.push('');L.push('งานล่าช้า (ผู้รับผิดชอบ)');LT.forEach(function(t){var bn=t.b?(PLAN.bldg.find(function(b){return b.c===t.b;})||{}).n+' – ':'';L.push('• '+bn+t.n+' '+f1(act(t.c,WK)-planPct(t,c))+'% · '+(who(t.k)||catName(t.k)));});}
   var OI=ISS.filter(function(x){return x.status!=='closed';});if(OI.length){L.push('');L.push('ปัญหาและอุปสรรค (เปิดอยู่ '+OI.length+')');OI.slice(0,8).forEach(function(x){L.push('• '+(x.title||'-')+(x.owner?' · '+x.owner:'')+(x.due?' · กำหนดแก้ '+ds(x.due):''));});}
   if(VOS.length){var vc2={};VOS.forEach(function(x){vc2[x.status]=(vc2[x.status]||0)+1;});L.push('');L.push('งานเพิ่ม-ลด: '+VOS.length+' รายการ · '+VOST.filter(function(o){return vc2[o[0]];}).map(function(o){return o[1]+' '+vc2[o[0]];}).join(' · '));}
-  if(CLAIMS.length){L.push('');L.push('การเบิกงวดงาน');CLAIMS.forEach(function(i){var n=ivInfo(i);L.push('• งวด '+(i.inv.no||'-')+' '+(i.title||'')+' · '+(n.cur<0?'ออก Invoice แล้ว':'ค้างที่ '+(n.cur+1)+'. '+IVS[n.cur]));});}
   if(R.issues){L.push('');L.push('สาเหตุความล่าช้า / หมายเหตุ');L.push(R.issues);}
   if(R.decisions){L.push('');L.push('มติที่ประชุม');L.push(R.decisions);}
   L.push('');L.push(location.href.split('#')[0]);return L.join('\n');}
@@ -382,8 +371,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){var d=$('#d
 async function load(){var r=await Promise.all([sb.from('mon_progress').select('week,task,pct,note'),sb.from('mon_reports').select('*'),sb.from('mon_owners').select('cat,names'),sb.from('profiles').select('id,display_name').eq('id',ME.id).maybeSingle()]);
   r.forEach(function(x){if(x.error)throw x.error;});PROG={};r[0].data.forEach(function(p){(PROG[p.week]=PROG[p.week]||{})[p.task]={pct:+p.pct,note:p.note||''};});
   VAL=null;if(ROLE==='admin'){var vr=await sb.from('mon_values').select('task,v');if(!vr.error&&vr.data&&vr.data.length){VAL={};vr.data.forEach(function(x){VAL[x.task]=+x.v;});}}
-  var r2=await Promise.all([sb.from('mon_vo').select('*'),sb.from('mon_issues').select('*'),sb.from('mtg_items').select('id,title,project,owner,inv')]);r2.forEach(function(x){if(x.error)throw x.error;});
-  VOS=r2[0].data;ISS=r2[1].data;CLAIMS=r2[2].data.filter(function(i){return i.inv&&/monte/i.test(i.project||'');});CLAIMS.forEach(function(i){i.inv.steps=i.inv.steps||['todo','todo','todo','todo'];});
+  var r2=await Promise.all([sb.from('mon_vo').select('*'),sb.from('mon_issues').select('*')]);r2.forEach(function(x){if(x.error)throw x.error;});
+  VOS=r2[0].data;ISS=r2[1].data;
   VOAMT={};if(ROLE==='admin'){var va=await sb.from('mon_vo_amt').select('id,amount');if(!va.error)va.data.forEach(function(x){VOAMT[x.id]=+x.amount;});}
   REP={};r[1].data.forEach(function(x){REP[x.week]=x;});OWN={};r[2].data.forEach(function(x){OWN[x.cat]=x.names||'';});if(r[3].data&&r[3].data.display_name)ME.name=r[3].data.display_name;SY.err=null;}
 var pt=0;function editing(){var a=document.activeElement;return !!(a&&a.matches&&a.matches('input:not([type=search]):not(#wksel),textarea'));}
@@ -396,7 +385,7 @@ async function enter(s){ME={id:s.user.id,email:s.user.email,name:s.user.email};g
   var r=await sb.rpc('mtg_role');if(r.error){showLogin('เชื่อมต่อฐานข้อมูลไม่สำเร็จ: '+r.error.message);return;}ROLE=r.data;
   if(!ROLE){gate('<h1>ยังไม่มีสิทธิ์</h1><p class="gnote">บัญชี '+esc(ME.email)+' ยังไม่ได้รับสิทธิ์ในระบบประชุม ให้ PM เพิ่มสิทธิ์ที่ ศูนย์ข้อมูลการประชุม &gt; ตั้งค่า &gt; สิทธิ์เข้าใช้ระบบประชุม</p><button class="btn" data-act="logout">ออกจากระบบ</button>');return;}
   try{await load();}catch(e){showLogin('โหลดข้อมูลไม่สำเร็จ: '+(e.message||e));return;}
-  var ch=sb.channel('mon');['mon_progress','mon_reports','mon_owners','mon_vo','mon_issues','mtg_items'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},remote);});ch.subscribe();render();
+  var ch=sb.channel('mon');['mon_progress','mon_reports','mon_owners','mon_vo','mon_issues'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},remote);});ch.subscribe();render();
   if(location.hash){var t=$(location.hash);if(t)t.scrollIntoView();}}
 async function boot(){if(!window.supabase){gate('<h1>โหลดระบบไม่สำเร็จ</h1><p class="gnote">ตรวจการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้านี้</p>');return;}
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});var s=await sb.auth.getSession();if(s.data&&s.data.session)enter(s.data.session);else showLogin();}
