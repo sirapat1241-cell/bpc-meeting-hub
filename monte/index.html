@@ -110,6 +110,10 @@ svg text{font-family:var(--f-body)}
 .dbox{background:var(--sheet);border:1.5px solid var(--ink);width:min(660px,100%);max-height:92%;overflow:auto;padding:20px}
 .dbox h3{margin:0 0 8px;font:700 17px var(--f-display)}
 .dbox textarea{width:100%;min-height:300px;font:400 13px/1.55 var(--f-body)}
+.alist2{border:1px solid var(--hair);max-height:60vh;overflow:auto}
+.hrow{display:block;width:100%;text-align:left;border:0;border-left:3px solid transparent;border-bottom:1px solid var(--hair);background:var(--sheet);padding:9px 12px}
+.hrow:hover{background:var(--soft)}.hrow.on{border-left-color:var(--brand);background:var(--brand-bg)}
+.hrow b{display:block;font-weight:600;font-size:14px}.hrow small{display:block;color:var(--mute);font-size:12.5px}
 .dfoot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
 .gate{min-height:100vh;display:grid;place-items:center;padding:20px}
 .gcard{background:var(--sheet);border:1.5px solid var(--ink);padding:28px;width:min(400px,100%);display:flex;flex-direction:column;gap:12px;text-align:center}
@@ -194,6 +198,17 @@ function scurve(){var W=640,H=250,L=40,R=12,T=12,B=34,n=WEEKS.length,x=function(
    '<polyline points="'+ac.join(' ')+'" fill="none" stroke="var(--brand)" stroke-width="2.5"/>'+(ac.length?'<circle cx="'+ac[ac.length-1].split(',')[0]+'" cy="'+ac[ac.length-1].split(',')[1]+'" r="4" fill="var(--brand)"/>':'')+'</svg>';}
 function ownCell(t){var w=who(t.k);return '<span style="font-size:12.5px" title="'+esc(catName(t.k))+'">'+(w?esc(w):'<span class="who2 none">ยังไม่ระบุ</span>')+'</span>';}
 function whoLine(t){var w=who(t.k);return ' · <span style="color:var(--brand)">'+(w?esc(w):catName(t.k)+': ยังไม่ระบุผู้รับผิดชอบ')+'</span>';}
+var VOS=[],VOAMT={},ISS=[],CLAIMS=[],SHOWCLOSED=false;
+var VOST=[['draft','เตรียมเสนอราคา'],['submitted','ยื่นแล้ว รอพิจารณา'],['approved','อนุมัติแล้ว'],['rejected','ไม่อนุมัติ'],['done','ดำเนินการแล้ว']];
+var IST=[['open','เปิด'],['progress','กำลังแก้ไข'],['closed','แก้แล้ว']];
+var IVS=['จัดทำเอกสาร','บริหารโครงการ','ผู้บริหารเซ็น','บช.ออก Invoice'],IVT={todo:'ยังไม่เริ่ม',doing:'กำลังดำเนินการ',done:'เสร็จแล้ว',back:'ส่งกลับแก้ไข'},IVC={todo:'t-idle',doing:'t-near',done:'t-ok',back:'t-late'};
+var AREAS=PLAN.bldg.map(function(b){return b.n;}).concat(['ถนน / Hardscape / Landscape','งานระบบภายนอก / ใต้ดิน','ทั้งโครงการ']);
+function ivInfo(i){var s=i.inv.steps||[],d=0,c=-1;for(var x=0;x<4;x++){if(s[x]==='done')d++;else if(c<0)c=x;}return {done:d,cur:c};}
+function uid(){return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);}
+function fld(kind,x,f,ph,w,type){var v=x[f]==null?'':x[f];if(!canWrite())return '<td'+(type==='date'?' class="mono" style="font-size:12.5px;white-space:nowrap"':'')+'>'+esc(type==='date'&&v?ds(v):v)+'</td>';
+  return '<td><input class="box nin'+(type==='number'?' mono':'')+'" style="'+(w?'min-width:'+w+'px':'')+(type==='number'?';width:70px;min-width:0;text-align:right':'')+'"'+(type?' type="'+type+'"':'')+' data-k="'+kind+':'+x.id+':'+f+'" data-'+kind+'="'+x.id+'" data-f="'+f+'" value="'+esc(v)+'" placeholder="'+esc(ph||'')+'"></td>';}
+function sel(kind,x,f,list,empty){var v=x[f]||'';if(!canWrite()){var o=list.find(function(o){return o[0]===v;});return esc(o?o[1]:v||'-');}
+  return '<select class="sel" style="padding:4px 26px 4px 8px;font-size:13px;max-width:'+(f==='area'?'210px':'170px')+'" data-k="'+kind+':'+x.id+':'+f+'" data-'+kind+'="'+x.id+'" data-f="'+f+'">'+(empty?'<option value="">'+empty+'</option>':'')+list.map(function(o){return '<option value="'+esc(o[0])+'"'+(o[0]===v?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}
 var VAL=null,SHOWM=false;try{SHOWM=sessionStorage.getItem('mon-money')==='1';}catch(e){}
 function M(){return ROLE==='admin'&&SHOWM&&!!VAL;}
 function bv(list){return list.reduce(function(a,t){return a+(VAL[t.c]||0);},0);}
@@ -206,13 +221,13 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
   var PP=agg(TASKS,function(t){return planPct(t,c);}),PA=agg(TASKS,function(t){return act(t.c,WK);}),dv=PA-PP,el=Math.max(0,Math.min(212,days(CS,c)+1));
   var h='<header class="top"><div class="logo" role="img" aria-label="โลโก้บริษัท"></div><div class="who"><b>BOAT PATTANA CONSTRUCTION</b><span>รายงานประชุมความก้าวหน้า · MONTE AVENUE</span></div>'+
    '<div class="wkbar"><button class="ib" data-act="wk" data-v="-1" aria-label="สัปดาห์ก่อน">‹</button><select class="sel" id="wksel" aria-label="เลือกสัปดาห์">'+WEEKS.map(function(w){return '<option value="'+w+'"'+(w===WK?' selected':'')+'>'+wkLabel(w)+'</option>';}).join('')+'</select><button class="ib" data-act="wk" data-v="1" aria-label="สัปดาห์ถัดไป">›</button>'+
-   ''+(ROLE==='admin'&&VAL?'<button class="btn q" data-act="money" title="เฉพาะผู้ดูแล" style="'+(SHOWM?'border-color:var(--brand);color:var(--brand)':'')+'">'+(SHOWM?'ซ่อนยอดเงิน':'แสดงยอดเงิน')+'</button>':'')+'<button class="btn q" data-act="line">สรุปส่ง LINE</button><button class="btn q" data-act="print">พิมพ์ / PDF</button><a class="btn q" href="../">ศูนย์ประชุม</a></div>'+
+   ''+(ROLE==='admin'&&VAL?'<button class="btn q" data-act="money" title="เฉพาะผู้ดูแล" style="'+(SHOWM?'border-color:var(--brand);color:var(--brand)':'')+'">'+(SHOWM?'ซ่อนยอดเงิน':'แสดงยอดเงิน')+'</button>':'')+'<button class="btn q" data-act="hist">บันทึกการประชุมย้อนหลัง</button><button class="btn q" data-act="line">สรุปส่ง LINE</button><button class="btn q" data-act="print">พิมพ์ / PDF</button><a class="btn q" href="../">ศูนย์ประชุม</a></div>'+
    '<div class="sv"><span class="sync" id="sync"></span><span>'+esc(ME.name)+'</span><button class="btn q" data-act="logout">ออกจากระบบ</button></div></header><main>';
   h+='<section class="sheet"><div class="tb"><div class="tlogo"><img src="bpt-logo.png" alt="BOAT PATTANA CONSTRUCTION"><div><span class="lb">รายงานการประชุมความก้าวหน้างานก่อสร้าง</span><h1>โครงการ MONTE AVENUE</h1><p>ผู้รับจ้าง บริษัท โบ๊ท พัฒนา คอนสตรัคชั่น จำกัด · ต.เกาะแก้ว อ.เมือง จ.ภูเก็ต</p><p>สัญญา 1 พ.ย. 69 – 31 พ.ค. 70 (212 วัน)'+(M()?' · มูลค่าตามสัญญา '+bt(VAL._contract):'')+' · อ้างอิงแผนงาน Rev.1</p></div></div>'+
    '<div><span class="lb">รอบรายงาน</span><b class="big">สัปดาห์ที่ '+weekNo(WK)+'</b><p>ข้อมูล ณ วันที่ '+ds(c)+'</p></div>'+
    '<div><span class="lb">วันประชุม</span><input type="date" class="box mono" data-rep="meet_date" value="'+esc(R.meet_date||'')+'"'+(cw?'':' disabled')+' aria-label="วันประชุม" style="width:100%"></div>'+
    '<div><span class="lb">ผู้เข้าประชุม</span><input class="box" data-rep="attendees" value="'+esc(R.attendees||'')+'" placeholder="รายชื่อผู้เข้าประชุม"'+(cw?'':' disabled')+' style="width:100%"></div></div>'+
-   '<nav class="agnav"><a href="#own">ผู้รับผิดชอบงาน</a><a href="#a1">1. ภาพรวมโครงการ</a><a href="#a2">2. แยกตาม Phase</a><a href="#a3">3. รายอาคาร</a><a href="#a4">4. ตามแผนงาน</a><a href="#a5">5. งานล่าช้า / ปัญหา</a><a href="#a6">6. แผน 2 สัปดาห์ถัดไป</a><a href="#a7">7. มติที่ประชุม</a></nav></section>';
+   '<nav class="agnav"><a href="#own">ผู้รับผิดชอบงาน</a><a href="#a1">1. ภาพรวมโครงการ</a><a href="#a2">2. แยกตาม Phase</a><a href="#a3">3. รายอาคาร</a><a href="#a4">4. ตามแผนงาน</a><a href="#a5">5. งานล่าช้า</a><a href="#a6">6. ปัญหาและอุปสรรค</a><a href="#a7">7. งานเพิ่ม-ลด</a><a href="#a8">8. การเบิกงวดงาน</a><a href="#a9">9. แผน 2 สัปดาห์ถัดไป</a><a href="#a10">10. มติที่ประชุม</a></nav></section>';
   h+='<section class="sheet ag first" id="own"><div class="dh"><h2>ผู้รับผิดชอบงาน</h2><span class="ct">'+(cw?'กรอกชื่อได้หลายคน คั่นด้วยเครื่องหมายจุลภาค ใช้ร่วมกันทุกสัปดาห์ และแสดงในทุกวาระ':'ดูอย่างเดียว')+'</span></div><div class="own">'+
    CATS.map(function(c){var n=TASKS.filter(function(t){return t.k===c[0];}).length;return '<label>'+c[1]+' <small>'+c[2]+' · '+n+' รายการ</small>'+(cw?'<input class="box" data-own="'+c[0]+'" value="'+esc(OWN[c[0]]||'')+'" placeholder="เช่น คุณสมชาย (SM), ผู้รับเหมา ABC">':'<b style="color:var(--ink);font-weight:500">'+esc(OWN[c[0]]||'-')+'</b>')+'</label>';}).join('')+'</div></section>';
   /* 1 overview */
@@ -263,27 +278,60 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
   h+='</section>';
   /* 5 late + issues */
   var late=TASKS.filter(function(t){var tp=planPct(t,c),ta=act(t.c,WK);return t.v>0&&ta-tp<-5&&ta<100;}).sort(function(a,b){return (act(a.c,WK)-planPct(a,c))-(act(b.c,WK)-planPct(b,c));});
-  h+='<section class="sheet ag" id="a5"><div class="dh"><span class="no">วาระที่ 5</span><h2>งานที่ล่าช้ากว่าแผน ปัญหาและอุปสรรค</h2><span class="ct">'+late.length+' รายการ ล่าช้ามากกว่า 5%</span></div><div class="two" style="margin-top:0"><div class="blk"><h3>รายการที่ล่าช้า (เรียงจากล่าช้ามากสุด)</h3>'+
+  h+='<section class="sheet ag" id="a5"><div class="dh"><span class="no">วาระที่ 5</span><h2>งานที่ล่าช้ากว่าแผน</h2><span class="ct">'+late.length+' รายการ ล่าช้ามากกว่า 5%</span></div><div class="two" style="margin-top:0"><div class="blk"><h3>รายการที่ล่าช้า (เรียงจากล่าช้ามากสุด)</h3>'+
    (late.length?'<ul class="lst">'+late.slice(0,15).map(function(t){var tp=planPct(t,c),ta=act(t.c,WK),bn=t.b?(PLAN.bldg.find(function(b){return b.c===t.b;})||{}).n+' – ':'';return '<li><span>'+t.c+' '+esc(bn+t.n)+'<small>แผน '+f1(tp)+'% · จริง '+f1(ta)+'% · กำหนดเสร็จ '+ds(t.e)+whoLine(t)+'</small></span>'+vtxt(ta-tp)+'</li>';}).join('')+'</ul>'+(late.length>15?'<p class="empty">และอีก '+(late.length-15)+' รายการ</p>':''):'<p class="empty">ไม่มีงานที่ล่าช้ากว่าแผนเกิน 5%</p>')+'</div>'+
-   '<div class="blk"><h3>ปัญหา อุปสรรค และแนวทางแก้ไข</h3><textarea class="box" data-rep="issues" rows="8" placeholder="บรรทัดละหนึ่งเรื่อง"'+(cw?'':' disabled')+'>'+esc(R.issues||'')+'</textarea></div></div></section>';
+   '<div class="blk"><h3>สาเหตุความล่าช้า / หมายเหตุ</h3><textarea class="box" data-rep="issues" rows="8" placeholder="บรรทัดละหนึ่งเรื่อง"'+(cw?'':' disabled')+'>'+esc(R.issues||'')+'</textarea></div></div></section>';
+  /* 6 issues */
+  var IS=ISS.slice().sort(function(a,b){return (a.sort||0)-(b.sort||0);}),openN=IS.filter(function(x){return x.status!=='closed';}).length,odN=IS.filter(function(x){return x.status!=='closed'&&x.due&&x.due<c;}).length,showI=IS.filter(function(x){return SHOWCLOSED||x.status!=='closed';});
+  h+='<section class="sheet ag" id="a6"><div class="dh"><span class="no">วาระที่ 6</span><h2>ปัญหาและอุปสรรค</h2><span class="ct">เปิดอยู่ '+openN+' เรื่อง'+(odN?' · <b style="color:var(--bad)">เลยกำหนดแก้ '+odN+'</b>':'')+' · แก้แล้ว '+(IS.length-openN)+'</span></div>'+
+   '<div class="tools">'+(cw?'<button class="btn pri" data-act="iss-add">+ เพิ่มปัญหา</button>':'')+'<label><input type="checkbox" id="showclosed"'+(SHOWCLOSED?' checked':'')+'> แสดงเรื่องที่แก้แล้ว</label></div>';
+  if(!showI.length)h+='<p class="empty">'+(IS.length?'ไม่มีปัญหาที่ยังเปิดอยู่':'ยังไม่มีปัญหาที่บันทึกไว้')+'</p>';
+  else h+='<div class="wrapx"><table class="tbl"><thead><tr><th>#</th><th>ปัญหา / อุปสรรค</th><th>ผลกระทบ</th><th>แนวทางแก้ไข</th><th>ผู้รับผิดชอบ</th><th>วันที่พบ</th><th>กำหนดแก้</th><th>สถานะ</th>'+(cw?'<th></th>':'')+'</tr></thead><tbody>'+showI.map(function(x,i){var od=x.status!=='closed'&&x.due&&x.due<c;
+    return '<tr'+(od?' style="background:var(--bad-bg)"':'')+'><td class="c">'+(i+1)+'</td>'+fld('iss',x,'title','ปัญหาที่พบ',220)+fld('iss',x,'impact','เช่น งานล่าช้า 5 วัน',160)+fld('iss',x,'action','แนวทางแก้ไข',200)+fld('iss',x,'owner','ชื่อ',110)+
+     fld('iss',x,'found','',0,'date')+fld('iss',x,'due','',0,'date')+'<td>'+sel('iss',x,'status',IST)+(od?'<span class="who2" style="color:var(--bad)">เลยกำหนด</span>':'')+'</td>'+(cw?'<td><button class="btn q" data-act="iss-del" data-v="'+x.id+'" title="ลบ">ลบ</button></td>':'')+'</tr>';}).join('')+'</tbody></table></div>';
+  h+='</section>';
+  /* 7 variation orders */
+  var VS=VOS.slice().sort(function(a,b){return (a.sort||0)-(b.sort||0);}),MV=ROLE==='admin'&&SHOWM,vc={};VS.forEach(function(x){vc[x.status]=(vc[x.status]||0)+1;});
+  var dAdd=VS.filter(function(x){return x.kind==='add'&&x.status!=='rejected';}).reduce(function(a,x){return a+(+x.days||0);},0);
+  var aSum=function(k){return VS.filter(function(x){return x.kind===k&&(x.status==='approved'||x.status==='done');}).reduce(function(a,x){return a+(+VOAMT[x.id]||0);},0);};
+  h+='<section class="sheet ag" id="a7"><div class="dh"><span class="no">วาระที่ 7</span><h2>งานเพิ่ม-ลด (Variation Order)</h2><span class="ct">'+VS.length+' รายการ · งานเพิ่ม '+VS.filter(function(x){return x.kind==='add';}).length+' · งานลด '+VS.filter(function(x){return x.kind==='cut';}).length+' · ขอขยายเวลารวม '+dAdd+' วัน</span></div>'+
+   '<div class="kpis" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:12px">'+VOST.map(function(o){return '<div class="kpi"><span class="lb">'+o[1]+'</span><b>'+(vc[o[0]]||0)+'</b></div>';}).join('')+'</div>'+
+   (MV?'<p style="margin:0 0 10px;font-size:13.5px">มูลค่าที่อนุมัติแล้ว (เฉพาะผู้ดูแล): งานเพิ่ม <b>'+bt(aSum('add'))+'</b> · งานลด <b>'+bt(aSum('cut'))+'</b> · สุทธิ <b>'+bt(aSum('add')-aSum('cut'))+'</b></p>':'')+
+   (cw?'<div class="tools"><button class="btn pri" data-act="vo-add">+ เพิ่มงานเพิ่ม-ลด</button></div>':'');
+  if(!VS.length)h+='<p class="empty">ยังไม่มีรายการงานเพิ่ม-ลด</p>';
+  else h+='<div class="wrapx"><table class="tbl"><thead><tr><th>เลขที่</th><th>รายการ</th><th>ประเภท</th><th>อาคาร / พื้นที่</th><th class="num">ขยายเวลา (วัน)</th><th>วันที่ยื่น</th><th>สถานะ</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th>'+(MV?'<th class="num">มูลค่า (บาท)</th>':'')+(cw?'<th></th>':'')+'</tr></thead><tbody>'+VS.map(function(x){
+    return '<tr>'+fld('vo',x,'no','VO-01',70)+fld('vo',x,'title','รายละเอียดงาน',220)+'<td>'+sel('vo',x,'kind',[['add','งานเพิ่ม'],['cut','งานลด']])+'</td><td>'+sel('vo',x,'area',AREAS.map(function(a){return [a,a];}),'— เลือก —')+'</td>'+fld('vo',x,'days','0',60,'number')+fld('vo',x,'submit_date','',0,'date')+'<td>'+sel('vo',x,'status',VOST)+'</td>'+fld('vo',x,'owner','ชื่อ',110)+fld('vo',x,'note','',150)+
+     (MV?'<td><input class="box pin mono" style="width:120px" type="number" step="0.01" data-k="voa:'+x.id+'" data-voamt="'+x.id+'" value="'+(VOAMT[x.id]!=null?VOAMT[x.id]:'')+'"></td>':'')+(cw?'<td><button class="btn q" data-act="vo-del" data-v="'+x.id+'" title="ลบ">ลบ</button></td>':'')+'</tr>';}).join('')+'</tbody></table></div>';
+  h+='<p class="empty noprint">มูลค่างานเพิ่ม-ลดเก็บแยก อ่านและแก้ไขได้เฉพาะผู้ดูแล (กด "แสดงยอดเงิน")</p></section>';
+  /* 8 payment claims from BPC meeting hub */
+  var CL=CLAIMS.slice().sort(function(a,b){return (a.inv.due||'9999').localeCompare(b.inv.due||'9999');}),cst=[0,0,0,0],cdone=0;
+  CL.forEach(function(i){var n=ivInfo(i);if(n.cur<0)cdone++;else cst[n.cur]++;});
+  h+='<section class="sheet ag" id="a8"><div class="dh"><span class="no">วาระที่ 8</span><h2>การเบิกงวดงาน</h2><span class="ct">ดึงจากศูนย์ข้อมูลการประชุม BPC (รายการโครงการ Monte ที่ติดตามงวดงาน) · '+CL.length+' งวด</span></div>'+
+   '<div class="kpis" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:12px">'+IVS.map(function(s2,x){return '<div class="kpi'+(cst[x]?' br':'')+'"><span class="lb">รอที่ '+(x+1)+'. '+s2+'</span><b>'+cst[x]+'</b></div>';}).join('')+'<div class="kpi ok"><span class="lb">ออก Invoice แล้ว</span><b>'+cdone+'</b></div></div>';
+  if(!CL.length)h+='<p class="empty">ยังไม่มีงวดงานของโครงการ Monte ไปที่ <a href="../#invoice">ศูนย์ประชุม → งวดงาน / Invoice</a> แล้วเพิ่มงวดงาน โดยเลือกโครงการ Monte</p>';
+  else h+='<div class="wrapx"><table class="tbl"><thead><tr><th>งวด</th><th>รายการ</th><th>กำหนดส่ง</th>'+IVS.map(function(s2,x){return '<th>'+(x+1)+'. '+s2+'</th>';}).join('')+'<th>สถานะ / Invoice</th>'+(MV?'<th class="num">ยอด (บาท)</th>':'')+'</tr></thead><tbody>'+CL.map(function(i){var v=i.inv,n=ivInfo(i),lt=n.cur>=0&&v.due&&v.due<c;
+    return '<tr><td class="c">'+esc(v.no||'-')+'</td><td>'+esc(i.title||'(ยังไม่ตั้งชื่อ)')+'<span class="who2 none">'+esc(i.owner||'')+'</span></td><td class="mono" style="font-size:12.5px;white-space:nowrap'+(lt?';color:var(--bad)':'')+'">'+(v.due?ds(v.due):'-')+(lt?' (เลย)':'')+'</td>'+
+     v.steps.map(function(st){return '<td><span class="tag '+IVC[st]+'">'+IVT[st]+'</span></td>';}).join('')+'<td>'+(n.cur<0?'<b style="color:var(--ok)">ออก Invoice แล้ว</b><span class="who2 none">'+esc(v.invNo||'')+'</span>':(n.cur+1)+'. '+IVS[n.cur])+'</td>'+(MV?'<td class="num">'+(v.amount?money(+String(v.amount).replace(/,/g,'')):'-')+'</td>':'')+'</tr>';}).join('')+'</tbody></table></div>';
+  h+='<p class="empty noprint">อัปเดตสถานะงวดงานได้ที่ <a href="../#invoice">ศูนย์ประชุม → งวดงาน / Invoice</a></p></section>';
   /* 6 next 2 weeks */
   var n1=add(c,1),n2=add(c,14),nx=TASKS.filter(function(t){return t.s<=n2&&t.e>=n1&&act(t.c,WK)<100;}).sort(function(a,b){return a.s.localeCompare(b.s);});
-  h+='<section class="sheet ag" id="a6"><div class="dh"><span class="no">วาระที่ 6</span><h2>แผนงาน 2 สัปดาห์ถัดไป</h2><span class="ct">'+ds(n1)+' – '+ds(n2)+' · ดึงจากแผน Rev.1</span></div><div class="two" style="margin-top:0"><div class="blk"><h3>งานที่ต้องทำตามแผน ('+nx.length+' รายการ)</h3>'+
+  h+='<section class="sheet ag" id="a9"><div class="dh"><span class="no">วาระที่ 9</span><h2>แผนงาน 2 สัปดาห์ถัดไป</h2><span class="ct">'+ds(n1)+' – '+ds(n2)+' · ดึงจากแผน Rev.1</span></div><div class="two" style="margin-top:0"><div class="blk"><h3>งานที่ต้องทำตามแผน ('+nx.length+' รายการ)</h3>'+
    (nx.length?'<ul class="lst">'+nx.map(function(t){var bn=t.b?(PLAN.bldg.find(function(b){return b.c===t.b;})||{}).n+' – ':'';return '<li><span>'+t.c+' '+esc(bn+t.n)+'<small>'+(t.s>=n1?'เริ่ม '+ds(t.s):'ต่อเนื่อง')+' · เสร็จ '+ds(t.e)+' · ปัจจุบัน '+f1(act(t.c,WK))+'%'+whoLine(t)+'</small></span><span class="num">เป้า '+f1(planPct(t,n2))+'%</span></li>';}).join('')+'</ul>':'<p class="empty">ไม่มีงานตามแผนในช่วงนี้</p>')+'</div>'+
    '<div class="blk"><h3>แผนงาน / การเตรียมการเพิ่มเติม</h3><textarea class="box" data-rep="next_plan" rows="8" placeholder="เช่น สั่งวัสดุ กำลังคน เครื่องจักร"'+(cw?'':' disabled')+'>'+esc(R.next_plan||'')+'</textarea></div></div></section>';
   /* 7 decisions */
-  h+='<section class="sheet ag" id="a7"><div class="dh"><span class="no">วาระที่ 7</span><h2>มติที่ประชุม และงานที่มอบหมาย</h2></div><textarea class="box" data-rep="decisions" rows="7" placeholder="บรรทัดละหนึ่งมติ เช่น เร่งงานโครงสร้าง Retail กลุ่ม 2 ให้ทันแผน — ผู้รับผิดชอบ / กำหนดเสร็จ"'+(cw?'':' disabled')+'>'+esc(R.decisions||'')+'</textarea>'+
+  h+='<section class="sheet ag" id="a10"><div class="dh"><span class="no">วาระที่ 10</span><h2>มติที่ประชุม และงานที่มอบหมาย</h2></div><textarea class="box" data-rep="decisions" rows="7" placeholder="บรรทัดละหนึ่งมติ เช่น เร่งงานโครงสร้าง Retail กลุ่ม 2 ให้ทันแผน — ผู้รับผิดชอบ / กำหนดเสร็จ"'+(cw?'':' disabled')+'>'+esc(R.decisions||'')+'</textarea>'+
    '<p class="empty noprint">แผนงานอ้างอิง: แผนงานก่อสร้าง MONTE AVENUE Rev.1 (11 พ.ย. 2569) · % ตามแผนคำนวณแบบเส้นตรงตามวันเริ่ม–วันเสร็จของแต่ละกิจกรรม ณ วันสิ้นสัปดาห์</p></section></main>';
   h+='<div class="dlg" id="dlg" hidden><div class="dbox" id="dbox"></div></div><div class="toast" id="toast" hidden></div>';
-  var y=window.scrollY,a=document.activeElement,k=a&&(a.dataset.pct||a.dataset.note||a.dataset.rep||a.dataset.own||a.id);
+  var y=window.scrollY,a=document.activeElement,k=a&&(a.dataset.k||a.dataset.pct||a.dataset.note||a.dataset.rep||a.dataset.own||a.id);
   $('#app').innerHTML=h;document.body.classList.toggle('ro',!cw);syncBadge();
-  if(k){var e=$('[data-pct="'+k+'"],[data-note="'+k+'"],[data-rep="'+k+'"],[data-own="'+k+'"],#'+k);if(e)e.focus({preventScroll:true});}window.scrollTo(0,y);}
+  if(k){var e=a.dataset.k?$('[data-k="'+k+'"]'):$('[data-pct="'+k+'"],[data-note="'+k+'"],[data-rep="'+k+'"],[data-own="'+k+'"],#'+k);if(e)e.focus({preventScroll:true});}window.scrollTo(0,y);}
 function syncBadge(){var e=$('#sync');if(!e)return;if(SY.err){e.className='sync err';e.innerHTML='<i></i>บันทึกไม่สำเร็จ <button class="btn q" data-act="reload">โหลดใหม่</button>';}else if(SY.n){e.className='sync saving';e.innerHTML='<i></i>กำลังบันทึก…';}else{e.className='sync';e.innerHTML='<i></i>บันทึกแล้ว';}}
 var tt=0;function toast(m){var t=$('#toast');if(!t)return;t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true;},4000);}
 async function save(p){SY.n++;SY.err=null;syncBadge();try{var r=await p;if(r&&r.error)throw r.error;}catch(e){SY.err=e;console.error(e);toast('บันทึกไม่สำเร็จ: '+(e.message||e));}SY.n--;syncBadge();}
+var rt=0;function rr(){clearTimeout(rt);rt=setTimeout(render,0);}
 function setPct(code,val,note){var cur=(PROG[WK]||{})[code],pct=val===''?null:Math.max(0,Math.min(100,+val));
-  if(pct===null){if(!cur)return;delete PROG[WK][code];render();save(sb.from('mon_progress').delete().eq('week',WK).eq('task',code));return;}
-  var r=rec(code,WK),nt=note!=null?note:(cur?cur.note:'');PROG[WK]=PROG[WK]||{};PROG[WK][code]={pct:pct,note:nt};render();
+  if(pct===null){if(!cur)return;delete PROG[WK][code];rr();save(sb.from('mon_progress').delete().eq('week',WK).eq('task',code));return;}
+  var r=rec(code,WK),nt=note!=null?note:(cur?cur.note:'');PROG[WK]=PROG[WK]||{};PROG[WK][code]={pct:pct,note:nt};rr();
   save(sb.from('mon_progress').upsert({week:WK,task:code,pct:pct,note:nt}));}
 function setRep(f,v){REP[WK]=REP[WK]||{};if((REP[WK][f]||'')===v)return;REP[WK][f]=v;var row={week:WK};['meet_date','attendees','issues','decisions','next_plan'].forEach(function(k){row[k]=REP[WK][k]||(k==='meet_date'?null:'');});save(sb.from('mon_reports').upsert(row));}
 function lineText(){var c=cut(WK),R=REP[WK]||{},L=[],PP=agg(TASKS,function(t){return planPct(t,c);}),PA=agg(TASKS,function(t){return act(t.c,WK);});
@@ -293,20 +341,38 @@ function lineText(){var c=cut(WK),R=REP[WK]||{},L=[],PP=agg(TASKS,function(t){re
   L.push('');L.push('รายอาคาร (แผน / จริง)');PLAN.bldg.forEach(function(b){var X=TASKS.filter(function(t){return t.b===b.c;}),pp=agg(X,function(t){return planPct(t,c);}),pa=agg(X,function(t){return act(t.c,WK);});if(pp>0||pa>0)L.push((pa-pp<-5?'🔴 ':'🟢 ')+b.n+': '+f1(pp)+'% / '+f1(pa)+'%');});
   var LT=TASKS.filter(function(t){return t.v>0&&act(t.c,WK)-planPct(t,c)<-5&&act(t.c,WK)<100;}).sort(function(a,b){return (act(a.c,WK)-planPct(a,c))-(act(b.c,WK)-planPct(b,c));}).slice(0,8);
   if(LT.length){L.push('');L.push('งานล่าช้า (ผู้รับผิดชอบ)');LT.forEach(function(t){var bn=t.b?(PLAN.bldg.find(function(b){return b.c===t.b;})||{}).n+' – ':'';L.push('• '+bn+t.n+' '+f1(act(t.c,WK)-planPct(t,c))+'% · '+(who(t.k)||catName(t.k)));});}
-  if(R.issues){L.push('');L.push('ปัญหา/อุปสรรค');L.push(R.issues);}
+  var OI=ISS.filter(function(x){return x.status!=='closed';});if(OI.length){L.push('');L.push('ปัญหาและอุปสรรค (เปิดอยู่ '+OI.length+')');OI.slice(0,8).forEach(function(x){L.push('• '+(x.title||'-')+(x.owner?' · '+x.owner:'')+(x.due?' · กำหนดแก้ '+ds(x.due):''));});}
+  if(VOS.length){var vc2={};VOS.forEach(function(x){vc2[x.status]=(vc2[x.status]||0)+1;});L.push('');L.push('งานเพิ่ม-ลด: '+VOS.length+' รายการ · '+VOST.filter(function(o){return vc2[o[0]];}).map(function(o){return o[1]+' '+vc2[o[0]];}).join(' · '));}
+  if(CLAIMS.length){L.push('');L.push('การเบิกงวดงาน');CLAIMS.forEach(function(i){var n=ivInfo(i);L.push('• งวด '+(i.inv.no||'-')+' '+(i.title||'')+' · '+(n.cur<0?'ออก Invoice แล้ว':'ค้างที่ '+(n.cur+1)+'. '+IVS[n.cur]));});}
+  if(R.issues){L.push('');L.push('สาเหตุความล่าช้า / หมายเหตุ');L.push(R.issues);}
   if(R.decisions){L.push('');L.push('มติที่ประชุม');L.push(R.decisions);}
   L.push('');L.push(location.href.split('#')[0]);return L.join('\n');}
+function histDlg(){var ks=Object.keys(REP).filter(function(w){var r=REP[w];return r&&(r.meet_date||r.attendees||r.decisions||r.issues||r.next_plan);}).sort().reverse();
+  var h='<h3>บันทึกการประชุมย้อนหลัง</h3><p class="empty" style="padding-top:0">เลือกครั้งที่ต้องการ ระบบจะเปิดรายงานของสัปดาห์นั้น พร้อม % ความก้าวหน้า ณ วันนั้น</p>';
+  if(!ks.length)h+='<p class="empty">ยังไม่มีบันทึกการประชุม กรอกวันประชุม ผู้เข้าประชุม หรือมติที่ประชุมในรายงานของสัปดาห์นั้นก่อน</p>';
+  else h+='<div class="alist2">'+ks.map(function(w,i){var r=REP[w],c=cut(w),pp=agg(TASKS,function(t){return planPct(t,c);}),pa=agg(TASKS,function(t){return act(t.c,w);}),d=(r.decisions||'').split('\n').filter(function(x){return x.trim();});
+    return '<button class="hrow'+(w===WK?' on':'')+'" data-act="hgo" data-v="'+w+'"><b>ครั้งที่ '+(ks.length-i)+' · สัปดาห์ที่ '+weekNo(w)+(r.meet_date?' · ประชุม '+ds(r.meet_date):'')+'</b><small>แผน '+f1(pp)+'% · จริง '+f1(pa)+'% · มติ '+d.length+' ข้อ'+(r.attendees?' · '+esc(r.attendees):'')+'</small>'+(d.length?'<small style="color:var(--ink)">'+esc(d.slice(0,2).join(' / '))+(d.length>2?' …':'')+'</small>':'')+'</button>';}).join('')+'</div>';
+  h+='<div class="dfoot"><button class="btn q" data-act="close">ปิด</button></div>';$('#dbox').innerHTML=h;$('#dlg').hidden=false;}
 function lineDlg(){var t=lineText();$('#dbox').innerHTML='<h3>สรุปส่ง LINE</h3><textarea class="box" id="out" readonly></textarea><div class="dfoot"><button class="btn q" data-act="close">ปิด</button><a class="btn" style="border-color:#06c755;color:#06c755" target="_blank" rel="noopener" href="https://line.me/R/share?text='+encodeURIComponent(t.slice(0,4500))+'">ส่งเข้ากลุ่ม LINE</a><button class="btn pri" data-act="copy">คัดลอก</button></div>';$('#out').value=t;$('#dlg').hidden=false;}
 function go(wk){if(WEEKS.indexOf(wk)<0)return;WK=wk;try{sessionStorage.setItem('mon-wk',WK);}catch(e){}render();}
-document.addEventListener('change',function(e){var t=e.target;if(t.id==='wksel')return go(t.value);if(t.id==='only'){FLT.only=t.value;render();return;}if(t.id==='cat'){FLT.cat=t.value;render();return;}
-  if(t.dataset.own){var k=t.dataset.own,v=t.value.trim();if((OWN[k]||'')===v)return;OWN[k]=v;render();save(sb.from('mon_owners').upsert({cat:k,names:v}));return;}
-  if(t.dataset.pct){if(t.value!==''&&(isNaN(+t.value)||+t.value<0||+t.value>100)){toast('กรอกตัวเลข 0–100');render();return;}setPct(t.dataset.pct,t.value,null);return;}
+document.addEventListener('change',function(e){var t=e.target;if(t.id==='wksel')return go(t.value);if(t.id==='only'){FLT.only=t.value;rr();return;}if(t.id==='cat'){FLT.cat=t.value;rr();return;}if(t.id==='showclosed'){SHOWCLOSED=t.checked;rr();return;}
+  if(t.dataset.iss||t.dataset.vo){var kind=t.dataset.iss?'iss':'vo',L=kind==='iss'?ISS:VOS,x=L.find(function(y){return y.id===(t.dataset.iss||t.dataset.vo);});if(!x)return;var f=t.dataset.f,v=t.value;
+    if(f==='days')v=parseInt(v,10)||0;if((f==='due'||f==='found'||f==='submit_date')&&!v)v=null;if(x[f]===v)return;x[f]=v;var row={};row[f]=v;rr();save(sb.from(kind==='iss'?'mon_issues':'mon_vo').update(row).eq('id',x.id));return;}
+  if(t.dataset.voamt){var id=t.dataset.voamt,amt=t.value===''?0:+t.value;if(isNaN(amt)){toast('กรอกตัวเลข');return;}VOAMT[id]=amt;rr();save(sb.from('mon_vo_amt').upsert({id:id,amount:amt}));return;}
+  if(t.dataset.own){var k=t.dataset.own,v=t.value.trim();if((OWN[k]||'')===v)return;OWN[k]=v;rr();save(sb.from('mon_owners').upsert({cat:k,names:v}));return;}
+  if(t.dataset.pct){if(t.value!==''&&(isNaN(+t.value)||+t.value<0||+t.value>100)){toast('กรอกตัวเลข 0–100');rr();return;}setPct(t.dataset.pct,t.value,null);return;}
   if(t.dataset.note){var r=rec(t.dataset.note,WK);setPct(t.dataset.note,r.pct,t.value);return;}
   if(t.dataset.rep)setRep(t.dataset.rep,t.dataset.rep==='meet_date'?(t.value||null):t.value);});
 document.addEventListener('input',function(e){if(e.target.id==='q'){FLT.q=e.target.value;render();}});
 document.addEventListener('click',function(e){var b=e.target.closest('[data-act]');if(!b){if(e.target.id==='dlg')$('#dlg').hidden=true;return;}var a=b.dataset.act;
   if(a==='wk')go(WEEKS[Math.max(0,Math.min(WEEKS.length-1,WEEKS.indexOf(WK)+(+b.dataset.v)))]);
   else if(a==='money'){if(ROLE!=='admin')return;SHOWM=!SHOWM;try{sessionStorage.setItem('mon-money',SHOWM?'1':'0');}catch(x){}render();toast(SHOWM?'แสดงยอดเงินบนหน้าจอนี้แล้ว (เฉพาะผู้ดูแลเห็น)':'ซ่อนยอดเงินแล้ว');}
+  else if(a==='iss-add'){if(!canWrite())return;var ni={id:uid(),found:cut(WK),title:'',impact:'',action:'',owner:'',due:null,status:'open',sort:Date.now()/1000};ISS.push(ni);render();save(sb.from('mon_issues').insert(ni));var f1e=$('[data-k="iss:'+ni.id+':title"]');if(f1e)f1e.focus();}
+  else if(a==='iss-del'){var di=ISS.find(function(y){return y.id===b.dataset.v;});if(di&&confirm('ลบปัญหา "'+(di.title||'ไม่มีชื่อ')+'" ?')){ISS=ISS.filter(function(y){return y!==di;});render();save(sb.from('mon_issues').delete().eq('id',di.id));}}
+  else if(a==='vo-add'){if(!canWrite())return;var nv={id:uid(),no:'VO-'+pad(VOS.length+1),title:'',kind:'add',area:'',days:0,status:'draft',submit_date:null,owner:'',note:'',sort:Date.now()/1000};VOS.push(nv);render();save(sb.from('mon_vo').insert(nv));var f2e=$('[data-k="vo:'+nv.id+':title"]');if(f2e)f2e.focus();}
+  else if(a==='vo-del'){var dv=VOS.find(function(y){return y.id===b.dataset.v;});if(dv&&confirm('ลบงานเพิ่ม-ลด "'+(dv.no||'')+' '+(dv.title||'')+'" ?')){VOS=VOS.filter(function(y){return y!==dv;});delete VOAMT[dv.id];render();save(sb.from('mon_vo').delete().eq('id',dv.id));}}
+  else if(a==='hist')histDlg();
+  else if(a==='hgo'){$('#dlg').hidden=true;go(b.dataset.v);window.scrollTo(0,0);toast('เปิดรายงาน '+wkLabel(b.dataset.v));}
   else if(a==='print')window.print();else if(a==='line')lineDlg();else if(a==='close')$('#dlg').hidden=true;
   else if(a==='copy'){var o=$('#out');o.select();try{navigator.clipboard.writeText(o.value).then(function(){toast('คัดลอกแล้ว');},function(){document.execCommand('copy');toast('คัดลอกแล้ว');});}catch(x){document.execCommand('copy');}}
   else if(a==='reload')load().then(render);else if(a==='logout')sb.auth.signOut().then(function(){location.reload();});});
@@ -316,6 +382,9 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){var d=$('#d
 async function load(){var r=await Promise.all([sb.from('mon_progress').select('week,task,pct,note'),sb.from('mon_reports').select('*'),sb.from('mon_owners').select('cat,names'),sb.from('profiles').select('id,display_name').eq('id',ME.id).maybeSingle()]);
   r.forEach(function(x){if(x.error)throw x.error;});PROG={};r[0].data.forEach(function(p){(PROG[p.week]=PROG[p.week]||{})[p.task]={pct:+p.pct,note:p.note||''};});
   VAL=null;if(ROLE==='admin'){var vr=await sb.from('mon_values').select('task,v');if(!vr.error&&vr.data&&vr.data.length){VAL={};vr.data.forEach(function(x){VAL[x.task]=+x.v;});}}
+  var r2=await Promise.all([sb.from('mon_vo').select('*'),sb.from('mon_issues').select('*'),sb.from('mtg_items').select('id,title,project,owner,inv')]);r2.forEach(function(x){if(x.error)throw x.error;});
+  VOS=r2[0].data;ISS=r2[1].data;CLAIMS=r2[2].data.filter(function(i){return i.inv&&/monte/i.test(i.project||'');});CLAIMS.forEach(function(i){i.inv.steps=i.inv.steps||['todo','todo','todo','todo'];});
+  VOAMT={};if(ROLE==='admin'){var va=await sb.from('mon_vo_amt').select('id,amount');if(!va.error)va.data.forEach(function(x){VOAMT[x.id]=+x.amount;});}
   REP={};r[1].data.forEach(function(x){REP[x.week]=x;});OWN={};r[2].data.forEach(function(x){OWN[x.cat]=x.names||'';});if(r[3].data&&r[3].data.display_name)ME.name=r[3].data.display_name;SY.err=null;}
 var pt=0;function editing(){var a=document.activeElement;return !!(a&&a.matches&&a.matches('input:not([type=search]):not(#wksel),textarea'));}
 function remote(p){var n=p&&p.new;if(n&&n.updated_by===ME.id)return;clearTimeout(pt);pt=setTimeout(function again(){if(editing()||SY.n){pt=setTimeout(again,1500);return;}load().then(render).catch(console.error);},700);}
@@ -327,7 +396,7 @@ async function enter(s){ME={id:s.user.id,email:s.user.email,name:s.user.email};g
   var r=await sb.rpc('mtg_role');if(r.error){showLogin('เชื่อมต่อฐานข้อมูลไม่สำเร็จ: '+r.error.message);return;}ROLE=r.data;
   if(!ROLE){gate('<h1>ยังไม่มีสิทธิ์</h1><p class="gnote">บัญชี '+esc(ME.email)+' ยังไม่ได้รับสิทธิ์ในระบบประชุม ให้ PM เพิ่มสิทธิ์ที่ ศูนย์ข้อมูลการประชุม &gt; ตั้งค่า &gt; สิทธิ์เข้าใช้ระบบประชุม</p><button class="btn" data-act="logout">ออกจากระบบ</button>');return;}
   try{await load();}catch(e){showLogin('โหลดข้อมูลไม่สำเร็จ: '+(e.message||e));return;}
-  var ch=sb.channel('mon');['mon_progress','mon_reports','mon_owners'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},remote);});ch.subscribe();render();
+  var ch=sb.channel('mon');['mon_progress','mon_reports','mon_owners','mon_vo','mon_issues','mtg_items'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},remote);});ch.subscribe();render();
   if(location.hash){var t=$(location.hash);if(t)t.scrollIntoView();}}
 async function boot(){if(!window.supabase){gate('<h1>โหลดระบบไม่สำเร็จ</h1><p class="gnote">ตรวจการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้านี้</p>');return;}
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});var s=await sb.auth.getSession();if(s.data&&s.data.session)enter(s.data.session);else showLogin();}
