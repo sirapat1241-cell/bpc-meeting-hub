@@ -174,7 +174,7 @@ function planPct(t,d){if(d<t.s)return 0;if(d>=t.e)return 100;return (days(t.s,d)
 var sb=null,ME=null,ROLE=null,PROG={},REP={},OWN={},WK=null,FLT={only:'',q:'',cat:''},SY={n:0,err:null};
 try{WK=sessionStorage.getItem('mon-wk');}catch(e){}
 if(!WK||WEEKS.indexOf(WK)<0){WK=monday(TODAY);if(WK<WEEKS[0])WK=WEEKS[0];if(WK>WEEKS[WEEKS.length-1])WK=WEEKS[WEEKS.length-1];}
-function canWrite(){return ROLE==='admin'||ROLE==='editor';}
+function canWrite(){return ROLE==='admin';}
 /* actual progress, carried forward from the latest earlier week */
 function rec(code,wk){var best=null;for(var w in PROG){if(w<=wk&&PROG[w][code]&&(!best||w>best))best=w;}return best?{w:best,pct:+PROG[best][code].pct,note:PROG[best][code].note||''}:{w:null,pct:0,note:''};}
 function act(code,wk){return rec(code,wk).pct;}
@@ -222,13 +222,13 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
   var h='<header class="top"><div class="logo" role="img" aria-label="โลโก้บริษัท"></div><div class="who"><b>BOAT PATTANA CONSTRUCTION</b><span>รายงานประชุมความก้าวหน้า · MONTE AVENUE</span></div>'+
    '<div class="wkbar"><button class="ib" data-act="wk" data-v="-1" aria-label="สัปดาห์ก่อน">‹</button><select class="sel" id="wksel" aria-label="เลือกสัปดาห์">'+WEEKS.map(function(w){return '<option value="'+w+'"'+(w===WK?' selected':'')+'>'+wkLabel(w)+'</option>';}).join('')+'</select><button class="ib" data-act="wk" data-v="1" aria-label="สัปดาห์ถัดไป">›</button>'+
    ''+(ROLE==='admin'&&VAL?'<button class="btn q" data-act="money" title="เฉพาะผู้ดูแล" style="'+(SHOWM?'border-color:var(--brand);color:var(--brand)':'')+'">'+(SHOWM?'ซ่อนยอดเงิน':'แสดงยอดเงิน')+'</button>':'')+'<button class="btn q" data-act="hist">บันทึกการประชุมย้อนหลัง</button><button class="btn q" data-act="line">สรุปส่ง LINE</button><button class="btn q" data-act="print">พิมพ์ / PDF</button><a class="btn q" href="../">ศูนย์ประชุม</a></div>'+
-   '<div class="sv"><span class="sync" id="sync"></span><span>'+esc(ME.name)+'</span><button class="btn q" data-act="logout">ออกจากระบบ</button></div></header><main>';
+   '<div class="sv"><span class="sync" id="sync"></span><span>'+esc(ME.name)+'<small style="display:block;font-size:11.5px">'+(cw?'ผู้ดูแล · แก้ไขได้':'ดูอย่างเดียว')+'</small></span><button class="btn q" data-act="logout">ออกจากระบบ</button></div></header><main>';
   h+='<section class="sheet"><div class="tb"><div class="tlogo"><img src="bpt-logo.png" alt="BOAT PATTANA CONSTRUCTION"><div><span class="lb">รายงานการประชุมความก้าวหน้างานก่อสร้าง</span><h1>โครงการ MONTE AVENUE</h1><p>บริษัท โบ๊ท พัฒนา คอนสตรัคชั่น จำกัด</p><p>สัญญา 1 พ.ย. 69 – 31 พ.ค. 70 (212 วัน)'+(M()?' · มูลค่าตามสัญญา '+bt(VAL._contract):'')+' · อ้างอิงแผนงาน Rev.1</p></div></div>'+
    '<div><span class="lb">รอบรายงาน</span><b class="big">สัปดาห์ที่ '+weekNo(WK)+'</b><p>ข้อมูล ณ วันที่ '+ds(c)+'</p></div>'+
    '<div><span class="lb">วันประชุม</span><input type="date" class="box mono" data-rep="meet_date" value="'+esc(R.meet_date||'')+'"'+(cw?'':' disabled')+' aria-label="วันประชุม" style="width:100%"></div>'+
    '<div><span class="lb">ผู้เข้าประชุม</span><input class="box" data-rep="attendees" value="'+esc(R.attendees||'')+'" placeholder="รายชื่อผู้เข้าประชุม"'+(cw?'':' disabled')+' style="width:100%"></div></div>'+
    '<nav class="agnav"><a href="#own">ผู้รับผิดชอบงาน</a><a href="#a1">1. ภาพรวมโครงการ</a><a href="#a2">2. แยกตาม Phase</a><a href="#a3">3. รายอาคาร</a><a href="#a4">4. ตามแผนงาน</a><a href="#a5">5. งานล่าช้า</a><a href="#a6">6. ปัญหาและอุปสรรค</a><a href="#a7">7. งานเพิ่ม-ลด</a><a href="#a8">8. แผน 2 สัปดาห์ถัดไป</a><a href="#a9">9. มติที่ประชุม</a></nav></section>';
-  h+='<section class="sheet ag first" id="own"><div class="dh"><h2>ผู้รับผิดชอบงาน</h2><span class="ct">'+(cw?'กรอกชื่อได้หลายคน คั่นด้วยเครื่องหมายจุลภาค ใช้ร่วมกันทุกสัปดาห์ และแสดงในทุกวาระ':'ดูอย่างเดียว')+'</span></div><div class="own">'+
+  h+='<section class="sheet ag first" id="own"><div class="dh"><h2>ผู้รับผิดชอบงาน</h2><span class="ct">'+(cw?'กรอกชื่อได้หลายคน คั่นด้วยเครื่องหมายจุลภาค ใช้ร่วมกันทุกสัปดาห์ และแสดงในทุกวาระ':'ดูอย่างเดียว · แก้ไขได้เฉพาะผู้ดูแล')+'</span></div><div class="own">'+
    CATS.map(function(c){var n=TASKS.filter(function(t){return t.k===c[0];}).length;return '<label>'+c[1]+' <small>'+c[2]+' · '+n+' รายการ</small>'+(cw?'<input class="box" data-own="'+c[0]+'" value="'+esc(OWN[c[0]]||'')+'" placeholder="เช่น คุณสมชาย (SM), ผู้รับเหมา ABC">':'<b style="color:var(--ink);font-weight:500">'+esc(OWN[c[0]]||'-')+'</b>')+'</label>';}).join('')+'</div></section>';
   /* 1 overview */
   var p1=TASKS.filter(function(t){return t.ph==='P1';}),p2=TASKS.filter(function(t){return t.ph==='P2';});
@@ -257,7 +257,7 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
      L.map(function(t,i){var tp=planPct(t,c),ta=act(t.c,WK);return '<div class="trd"><span title="'+esc(t.n+(who(t.k)?' · '+who(t.k):''))+'">'+TRS[i]+(who(t.k)?'<small class="who2" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(who(t.k))+'</small>':'')+'</span>'+bar(tp,ta,stat(tp,ta)[0])+'<span class="num">'+Math.round(ta)+'%</span></div>';}).join('')+'</div>';});
   h+='</div></section>';
   /* 4 detail */
-  h+='<section class="sheet ag" id="a4"><div class="dh"><span class="no">วาระที่ 4</span><h2>ความก้าวหน้าตามแผนงาน (รายละเอียด)</h2><span class="ct">'+(cw?'กรอก % ผลงานจริงของสัปดาห์นี้ ระบบบันทึกให้อัตโนมัติ · ช่องเส้นประ = ใช้ค่าจากสัปดาห์ก่อน':'ดูอย่างเดียว')+'</span></div>'+
+  h+='<section class="sheet ag" id="a4"><div class="dh"><span class="no">วาระที่ 4</span><h2>ความก้าวหน้าตามแผนงาน (รายละเอียด)</h2><span class="ct">'+(cw?'กรอก % ผลงานจริงของสัปดาห์นี้ ระบบบันทึกให้อัตโนมัติ · ช่องเส้นประ = ใช้ค่าจากสัปดาห์ก่อน':'ดูอย่างเดียว · แก้ไขได้เฉพาะผู้ดูแล')+'</span></div>'+
    '<div class="tools"><select class="sel" id="only" aria-label="กรองรายการ">'+[['','แสดงทุกรายการ'],['due','เฉพาะงานที่ถึงกำหนดแล้ว'],['late','เฉพาะงานล่าช้า'],['P1','เฉพาะ Phase 1'],['P2','เฉพาะ Phase 2']].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===FLT.only?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'+
    '<select class="sel" id="cat" aria-label="กรองตามประเภทงาน"><option value="">ทุกประเภทงาน / ผู้รับผิดชอบ</option>'+CATS.map(function(c){return '<option value="'+c[0]+'"'+(c[0]===FLT.cat?' selected':'')+'>'+c[1]+(who(c[0])?' — '+esc(who(c[0])):'')+'</option>';}).join('')+'</select>'+
    '<input class="box" id="q" type="search" placeholder="ค้นหารายการ" value="'+esc(FLT.q)+'" style="flex:1 1 200px"></div>';
@@ -382,8 +382,7 @@ function showLogin(msg){gate('<h1>รายงานความก้าวห�
 document.addEventListener('submit',async function(e){if(e.target.id!=='login')return;e.preventDefault();var b=$('#gobtn');b.disabled=true;b.textContent='กำลังเข้าสู่ระบบ…';
   var r=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});if(r.error){b.disabled=false;b.textContent='เข้าสู่ระบบ';$('#gerr').textContent='เข้าสู่ระบบไม่สำเร็จ: อีเมลหรือรหัสผ่านไม่ถูกต้อง';return;}enter(r.data.session);});
 async function enter(s){ME={id:s.user.id,email:s.user.email,name:s.user.email};gate('<p class="gnote">กำลังโหลดข้อมูล…</p>');
-  var r=await sb.rpc('mtg_role');if(r.error){showLogin('เชื่อมต่อฐานข้อมูลไม่สำเร็จ: '+r.error.message);return;}ROLE=r.data;
-  if(!ROLE){gate('<h1>ยังไม่มีสิทธิ์</h1><p class="gnote">บัญชี '+esc(ME.email)+' ยังไม่ได้รับสิทธิ์ในระบบประชุม ให้ PM เพิ่มสิทธิ์ที่ ศูนย์ข้อมูลการประชุม &gt; ตั้งค่า &gt; สิทธิ์เข้าใช้ระบบประชุม</p><button class="btn" data-act="logout">ออกจากระบบ</button>');return;}
+  var r=await sb.rpc('mtg_role');if(r.error){showLogin('เชื่อมต่อฐานข้อมูลไม่สำเร็จ: '+r.error.message);return;}ROLE=r.data||'viewer';
   try{await load();}catch(e){showLogin('โหลดข้อมูลไม่สำเร็จ: '+(e.message||e));return;}
   var ch=sb.channel('mon');['mon_progress','mon_reports','mon_owners','mon_vo','mon_issues'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},remote);});ch.subscribe();render();
   if(location.hash){var t=$(location.hash);if(t)t.scrollIntoView();}}
