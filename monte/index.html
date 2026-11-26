@@ -34,6 +34,7 @@ main{max-width:1320px;margin:0 auto;padding:18px 16px 80px}
 .lb{display:block;font-size:11.5px;color:var(--mute);letter-spacing:.04em;margin-bottom:2px}
 .tb{display:grid;grid-template-columns:2.3fr 1.2fr 1fr 1.2fr;border:1.5px solid var(--ink)}
 .tb>div{padding:10px 14px;border-left:1px solid var(--ink);min-width:0}.tb>div:first-child{border-left:0}
+.tlogo{display:flex;gap:14px;align-items:center}.tlogo img{height:84px;width:auto;flex:none}
 .tb h1{margin:0;font:700 21px/1.25 var(--f-display)}
 .tb p{margin:2px 0 0;font-size:13px;color:var(--mute)}
 .tb b.big{font:500 20px var(--f-mono)}
@@ -207,7 +208,7 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
    '<div class="wkbar"><button class="ib" data-act="wk" data-v="-1" aria-label="สัปดาห์ก่อน">‹</button><select class="sel" id="wksel" aria-label="เลือกสัปดาห์">'+WEEKS.map(function(w){return '<option value="'+w+'"'+(w===WK?' selected':'')+'>'+wkLabel(w)+'</option>';}).join('')+'</select><button class="ib" data-act="wk" data-v="1" aria-label="สัปดาห์ถัดไป">›</button>'+
    ''+(ROLE==='admin'&&VAL?'<button class="btn q" data-act="money" title="เฉพาะผู้ดูแล" style="'+(SHOWM?'border-color:var(--brand);color:var(--brand)':'')+'">'+(SHOWM?'ซ่อนยอดเงิน':'แสดงยอดเงิน')+'</button>':'')+'<button class="btn q" data-act="line">สรุปส่ง LINE</button><button class="btn q" data-act="print">พิมพ์ / PDF</button><a class="btn q" href="../">ศูนย์ประชุม</a></div>'+
    '<div class="sv"><span class="sync" id="sync"></span><span>'+esc(ME.name)+'</span><button class="btn q" data-act="logout">ออกจากระบบ</button></div></header><main>';
-  h+='<section class="sheet"><div class="tb"><div><span class="lb">รายงานการประชุมความก้าวหน้างานก่อสร้าง</span><h1>โครงการ MONTE AVENUE</h1><p>ผู้ว่าจ้าง บริษัท บีวายพร็อพเพอร์ตี้ จำกัด · ผู้รับจ้าง บริษัท โบ๊ท พัฒนา คอนสตรัคชั่น จำกัด · ต.เกาะแก้ว อ.เมือง จ.ภูเก็ต</p><p>สัญญา 1 พ.ย. 69 – 31 พ.ค. 70 (212 วัน)'+(M()?' · มูลค่าตามสัญญา '+bt(VAL._contract):'')+' · อ้างอิงแผนงาน Rev.1</p></div>'+
+  h+='<section class="sheet"><div class="tb"><div class="tlogo"><img src="bpt-logo.png" alt="BOAT PATTANA CONSTRUCTION"><div><span class="lb">รายงานการประชุมความก้าวหน้างานก่อสร้าง</span><h1>โครงการ MONTE AVENUE</h1><p>ผู้ว่าจ้าง บริษัท บีวายพร็อพเพอร์ตี้ จำกัด · ผู้รับจ้าง บริษัท โบ๊ท พัฒนา คอนสตรัคชั่น จำกัด · ต.เกาะแก้ว อ.เมือง จ.ภูเก็ต</p><p>สัญญา 1 พ.ย. 69 – 31 พ.ค. 70 (212 วัน)'+(M()?' · มูลค่าตามสัญญา '+bt(VAL._contract):'')+' · อ้างอิงแผนงาน Rev.1</p></div></div>'+
    '<div><span class="lb">รอบรายงาน</span><b class="big">สัปดาห์ที่ '+weekNo(WK)+'</b><p>ข้อมูล ณ วันที่ '+ds(c)+'</p></div>'+
    '<div><span class="lb">วันประชุม</span><input type="date" class="box mono" data-rep="meet_date" value="'+esc(R.meet_date||'')+'"'+(cw?'':' disabled')+' aria-label="วันประชุม" style="width:100%"></div>'+
    '<div><span class="lb">ผู้เข้าประชุม</span><input class="box" data-rep="attendees" value="'+esc(R.attendees||'')+'" placeholder="รายชื่อผู้เข้าประชุม"'+(cw?'':' disabled')+' style="width:100%"></div></div>'+
