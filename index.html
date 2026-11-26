@@ -320,6 +320,22 @@ button.kpi:hover{border-color:var(--ink)}
 .cal-c:hover .cal-add,.cal-add:focus{opacity:1}
 
 /* ---------- minutes, setup ---------- */
+.mtabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-top:12px}
+.mtabs .chip{--c:var(--brand)}
+.arch{display:grid;grid-template-columns:minmax(240px,300px) minmax(0,1fr);gap:22px;align-items:start}
+.alist{border:1px solid var(--hair);max-height:70vh;overflow:auto}
+.alist .mh2{font:600 12px var(--f-display);color:var(--mute);padding:8px 12px 4px;background:var(--soft);position:sticky;top:0}
+.alist button{display:block;width:100%;text-align:left;border:0;border-left:3px solid transparent;border-bottom:1px solid var(--hair);background:var(--sheet);padding:9px 12px;color:inherit}
+.alist button:hover{background:var(--soft)}
+.alist button.on{border-left-color:var(--brand);background:var(--brand-bg)}
+.alist b{display:block;font-weight:600;font-size:14px}
+.alist small{display:block;color:var(--mute);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adet{border:1px solid var(--hair);padding:18px 20px;min-width:0}
+.adet h2{margin:0 0 2px;font:700 19px var(--f-display)}
+.adet h4{margin:16px 0 6px;font:600 14px var(--f-display);color:var(--brand)}
+.adet ol{margin:0;padding-left:20px}.adet li{margin-bottom:3px}
+@media (max-width:900px){.arch{grid-template-columns:1fr}.alist{max-height:260px}}
+
 .rec{border-top:1px solid var(--hair);padding:14px 0;display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:8px 20px;align-items:start}
 .rec .mono{font-size:14px}
 .rec p{margin:0 0 4px}
@@ -524,7 +540,7 @@ function norm(s){
   s.depts=s.depts||[];s.depts.forEach(function(d){d.topics=d.topics||[];d.minutes=+d.minutes||10;d.procure=!!d.procure;});
   s.items=s.items||[];s.items.forEach(function(i){i.priority=i.priority||'mid';i.progress=+i.progress||0;i.stage=+i.stage||0;i.history=i.history||[];
     ['needDate','qty','unit','supplier','po','note','owner','project','due','title'].forEach(function(k){if(i[k]==null)i[k]='';});if(i.inv){i.inv.steps=i.inv.steps||['todo','todo','todo','todo'];['no','amount','due','invNo','invDate'].forEach(function(k){if(i.inv[k]==null)i.inv[k]='';});}else i.inv=null;});
-  s.minutes=s.minutes||{};return s;}
+  s.minutes=s.minutes||{};s.meetings=s.meetings||[];s.meetings.forEach(function(m){['title','attendees','decisions','followups','date'].forEach(function(k){if(m[k]==null)m[k]='';});});return s;}
 var sb=null, ME=null, ROLE=null, S=norm({}), SYNCED=clone(S), undo=[], HQ=[], PROFILES=[], MEMBERS=[], PROJ_DB=[], SY={n:0,err:null,q:Promise.resolve()};
 var ROLES={admin:'ผู้ดูแล',editor:'แก้ไขได้',viewer:'ดูอย่างเดียว'};
 var F={q:'',project:'',owner:'',status:'',sort:'due'}, group='status', CAL=null;
@@ -541,7 +557,13 @@ function isOver(i){return i.status!=='done'&&i.due&&i.due<TODAY;}
 function lateDays(i){return diffDays(i.due,TODAY);}
 function isProc(i){var d=dept(i.dept);return !!(d&&d.procure);}
 function isUrgent(i){return isProc(i)&&i.status!=='done'&&!!i.needDate&&i.needDate<=addDays(TODAY,S.meta.urgentDays)&&i.stage<PO_STAGE;}
-function minutesOf(wk){return S.minutes[wk]||{date:'',attendees:'',decisions:'',followups:''};}
+var MSEL=null, ARCH=null;
+function byDate(a,b){return (a.date||'').localeCompare(b.date||'')||(a.id<b.id?-1:1);}
+function meetingsIn(wk){var e=addDays(wk,6);return S.meetings.filter(function(m){return m.date>=wk&&m.date<=e;}).sort(byDate);}
+function curMeeting(){var L=meetingsIn(WK);return L.find(function(m){return m.id===MSEL;})||L[L.length-1]||null;}
+function meeting(id){return S.meetings.find(function(m){return m.id===id;});}
+function mLabel(m){var d=utc(m.date);return 'วัน'+DAYF[d.getUTCDay()]+'ที่ '+dFull(m.date);}
+function lines(t){return String(t||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);}
 function projects(){var s={};PROJ_DB.forEach(function(p){s[p]=1;});S.meta.projects.forEach(function(p){s[p]=1;});S.items.forEach(function(i){if(i.project)s[i.project]=1;});return Object.keys(s);}
 function people(){var s={},out=[];function add(n,r){if(n&&!s[n]){s[n]=1;out.push({name:n,role:r||''});}}
   S.meta.people.forEach(function(p){add(p.name,p.role);});
@@ -633,10 +655,10 @@ function rowHtml(i,n,dp){var over=isOver(i),k=i.id+':';
 function reportHtml(){
   var all=base(),n=all.length||1,vis=visible(),cnt={};ORDER.forEach(function(k){cnt[k]=all.filter(function(i){return i.status===k;}).length;});
   var over=all.filter(isOver).length,urg=all.filter(isUrgent).length,soon=all.filter(function(i){return i.status!=='done'&&i.due&&i.due>=TODAY&&i.due<=addDays(TODAY,7);}).length;
-  var avg=all.length?Math.round(all.reduce(function(a,i){return a+i.progress;},0)/all.length):0,w=weekNo(WK),m=minutesOf(WK),meet=!!MEET;
+  var avg=all.length?Math.round(all.reduce(function(a,i){return a+i.progress;},0)/all.length):0,w=weekNo(WK),MW=meetingsIn(WK),m=curMeeting()||{},meet=!!MEET;
   var h=notesHtml()+'<section class="sheet"><div class="tb rise"><div><span class="lb">เอกสาร</span><h1>รายงานติดตามงานประจำสัปดาห์</h1></div>'+
    '<div><span class="lb">สัปดาห์ที่</span><div class="wk"><button class="ib" data-act="wk" data-v="-1" aria-label="สัปดาห์ก่อน">‹</button><div><b>'+pad(w.w)+'/'+(w.y+543)+'</b><small>'+range(WK)+'</small></div><button class="ib" data-act="wk" data-v="1" aria-label="สัปดาห์ถัดไป">›</button>'+(WK!==monday(TODAY)?'<button class="btn q edit" data-act="wk" data-v="0">สัปดาห์นี้</button>':'')+'</div></div>'+
-   '<div data-min="'+WK+'"><span class="lb">วันประชุม</span><input type="date" class="in mono" data-f="date" data-k="min:date" value="'+esc(m.date)+'" aria-label="วันประชุม"></div>'+
+   '<div><span class="lb">วันประชุม</span>'+(MW.length?'<select class="sel" data-flt="msel" data-k="flt:msel" aria-label="เลือกการประชุม">'+opts(MW.map(function(x){return [x.id,dFull(x.date)+(x.title?' · '+x.title:'')];}),m.id)+'</select>':'<span class="n" style="display:block;padding:4px 6px">ยังไม่มีบันทึกการประชุมในสัปดาห์นี้</span>')+'</div>'+
    '<div><span class="lb">ผู้จัดทำ</span><select class="sel" data-meta="preparedBy" data-k="meta:prep" aria-label="ผู้จัดทำ">'+opts(people().map(function(p){return [p.name,p.name];}),S.meta.preparedBy,'','— เลือกผู้จัดทำ —')+'</select></div></div>';
   h+='<div class="sum"><div class="stack" role="img" aria-label="สัดส่วนสถานะงาน">'+['done','doing','delayed','todo'].map(function(k){return '<i class="b-'+k+'" style="width:'+(cnt[k]/n*100)+'%"></i>';}).join('')+'</div>'+
    '<div class="figs"><div><b>'+all.length+'</b>รายการ</div><div><b>'+avg+'%</b>คืบหน้าเฉลี่ย</div><div class="'+(over?'alert':'')+'"><b>'+over+'</b>เกินกำหนด</div><div><b>'+soon+'</b>ครบกำหนดใน 7 วัน</div></div>'+
@@ -655,10 +677,17 @@ function reportHtml(){
     if(rows.length)h+='<div class="rhead"><span></span><span>รายการ / หมายเหตุ</span><span>โครงการ</span><span>ผู้รับผิดชอบ</span><span>กำหนดเสร็จ</span><span>คืบหน้า</span><span>สถานะ</span><span></span></div>'+rows.map(function(i,y){return rowHtml(i,y+1,dp);}).join('');
     else h+='<div class="empty">'+(F.q||F.status||F.project||F.owner?'ไม่มีรายการที่ตรงกับตัวกรอง':'ยังไม่มีรายการติดตามของฝ่ายนี้')+'</div>';
     h+='<button class="addrow" data-act="add">+ เพิ่มรายการ</button></div>';});
-  h+='<div class="min" data-min="'+WK+'"><div class="dh"><span class="no">'+pad(S.depts.length+1)+'</span><h2>บันทึกการประชุม สัปดาห์ที่ '+w.w+'</h2><span class="ct">'+range(WK)+'</span></div><div class="mg">'+
-   '<label class="wide">ผู้เข้าร่วม<input class="box" data-f="attendees" data-k="min:att" value="'+esc(m.attendees)+'" placeholder="เช่น ผู้จัดการโครงการ, หัวหน้าฝ่ายจัดซื้อ"></label>'+
-   '<label>มติที่ประชุม<textarea class="box" data-f="decisions" data-k="min:dec" placeholder="บรรทัดละหนึ่งมติ">'+esc(m.decisions)+'</textarea></label>'+
-   '<label>งานที่ต้องตามต่อสัปดาห์หน้า<textarea class="box" data-f="followups" data-k="min:fol" placeholder="บรรทัดละหนึ่งเรื่อง">'+esc(m.followups)+'</textarea></label></div></div></section>';
+  h+='<div class="min"><div class="dh"><span class="no">'+pad(S.depts.length+1)+'</span><h2>บันทึกการประชุม สัปดาห์ที่ '+w.w+'</h2><span class="ct">'+range(WK)+' · '+MW.length+' ครั้ง</span></div>'+
+   '<div class="mtabs">'+MW.map(function(x){return '<button class="chip'+(x.id===m.id?' on':'')+'" data-act="msel" data-v="'+x.id+'">ประชุม '+dShort(x.date)+(x.title?' · '+esc(x.title):'')+'</button>';}).join('')+(canWrite()?'<button class="btn q" data-act="meet-new">+ บันทึกการประชุมครั้งใหม่</button>':'')+'</div>';
+  if(m.id)h+='<div class="mg" data-mt="'+m.id+'">'+
+   '<label>วันประชุม<input type="date" class="box" data-f="date" data-k="mt:date" value="'+esc(m.date)+'"></label>'+
+   '<label>หัวข้อการประชุม<input class="box" data-f="title" data-k="mt:title" value="'+esc(m.title)+'" placeholder="เช่น ประชุมประจำสัปดาห์, ประชุมฝ่ายต้นทุน"></label>'+
+   '<label class="wide">ผู้เข้าร่วม<input class="box" data-f="attendees" data-k="mt:att" value="'+esc(m.attendees)+'" placeholder="เช่น ผู้จัดการโครงการ, หัวหน้าฝ่ายจัดซื้อ"></label>'+
+   '<label>มติที่ประชุม<textarea class="box" data-f="decisions" data-k="mt:dec" placeholder="บรรทัดละหนึ่งมติ">'+esc(m.decisions)+'</textarea></label>'+
+   '<label>งานที่ต้องตามต่อ<textarea class="box" data-f="followups" data-k="mt:fol" placeholder="บรรทัดละหนึ่งเรื่อง">'+esc(m.followups)+'</textarea></label>'+
+   (canWrite()?'<div class="wide" style="text-align:right"><button class="btn q bad" data-act="meet-del">ลบบันทึกครั้งนี้</button></div>':'')+'</div>';
+  else h+='<div class="empty">ยังไม่มีบันทึกการประชุมในสัปดาห์นี้'+(canWrite()?' กด "+ บันทึกการประชุมครั้งใหม่" เพื่อเริ่มบันทึก':'')+'</div>';
+  h+='</div></section>';
   return h;}
 
 /* ---------- board ---------- */
@@ -684,12 +713,26 @@ function calendarHtml(){var first=CAL||TODAY.slice(0,8)+'01',d0=utc(first),y=d0.
   return h+'</div></div></section>';}
 
 /* ---------- minutes archive ---------- */
-function minutesHtml(){var ks=Object.keys(S.minutes).sort().reverse();
-  var h=notesHtml()+'<section class="sheet"><h1 class="h">บันทึกการประชุมย้อนหลัง</h1><p class="sub">บันทึกของแต่ละสัปดาห์เขียนที่ท้ายหน้ารายงาน หน้านี้รวมทุกสัปดาห์ไว้ให้ค้นย้อนหลัง</p>';
-  if(!ks.length)h+='<div class="empty">ยังไม่มีบันทึกการประชุม</div>';
-  ks.forEach(function(k,x){var m=S.minutes[k],w=weekNo(k);
-    h+='<div class="rec rise" style="--i:'+x+'"><div><div class="mono">สัปดาห์ '+pad(w.w)+'/'+(w.y+543)+'</div><small>'+range(k)+'</small></div><div><p><small>ประชุม '+dFull(m.date)+' · '+esc(m.attendees||'ไม่ได้ระบุผู้เข้าร่วม')+'</small></p><p><b>มติ</b> '+esc(m.decisions||'-').replace(/\n/g,'<br>')+'</p><p><b>ตามต่อ</b> '+esc(m.followups||'-').replace(/\n/g,'<br>')+'</p></div><button class="btn q" data-act="goto" data-v="'+k+'">เปิดในรายงาน</button></div>';});
-  return h+'</section>';}
+function minutesText(m){var L=['บันทึกการประชุม '+mLabel(m)+(m.title?' · '+m.title:'')];if(m.attendees)L.push('ผู้เข้าร่วม: '+m.attendees);
+  var d=lines(m.decisions),f=lines(m.followups);if(d.length){L.push('');L.push('มติที่ประชุม');d.forEach(function(x,i){L.push((i+1)+'. '+x);});}
+  if(f.length){L.push('');L.push('งานที่ต้องตามต่อ');f.forEach(function(x,i){L.push((i+1)+'. '+x);});}return L.join('\n');}
+function minutesHtml(){var q=(F.mq||'').trim().toLowerCase(),all=S.meetings.slice().sort(byDate).reverse(),
+  L=all.filter(function(m){return !q||[m.title,m.attendees,m.decisions,m.followups,dFull(m.date)].join(' ').toLowerCase().indexOf(q)>=0;}),
+  cur=meeting(ARCH)||L[0]||null,mo='',h=notesHtml()+'<section class="sheet"><h1 class="h">บันทึกการประชุมย้อนหลัง</h1><p class="sub">แต่ละครั้งที่ประชุมบันทึกแยกกันตามวันประชุม เลือกวันที่ทางซ้ายเพื่อเปิดอ่าน การบันทึกและแก้ไขทำที่ท้ายหน้ารายงานประจำสัปดาห์</p>';
+  if(!all.length)return h+'<div class="empty">ยังไม่มีบันทึกการประชุม</div></section>';
+  h+='<div class="tools"><div class="search">'+IC.search+'<input class="f" type="search" data-flt="mq" data-k="flt:mq" value="'+esc(F.mq||'')+'" placeholder="ค้นหาในบันทึก เช่น ชื่อคน มติ หรือวันที่" aria-label="ค้นหาบันทึกการประชุม"></div><span class="mono" style="color:var(--mute);font-size:13px">'+L.length+' ครั้ง</span></div><div class="arch"><div class="alist">';
+  L.forEach(function(m){var k=m.date.slice(0,7);if(k!==mo){mo=k;var d=utc(m.date);h+='<div class="mh2">'+MONF[d.getUTCMonth()]+' '+(d.getUTCFullYear()+543)+'</div>';}
+    var dn=lines(m.decisions).length,fn=lines(m.followups).length;
+    h+='<button class="'+(cur&&cur.id===m.id?'on':'')+'" data-act="arch" data-v="'+m.id+'"><b>'+mLabel(m)+'</b><small>'+esc(m.title||'ประชุมติดตามงาน')+' · มติ '+dn+' · ตามต่อ '+fn+'</small></button>';});
+  if(!L.length)h+='<div class="empty">ไม่พบบันทึกที่ตรงกับคำค้น</div>';
+  h+='</div><div class="adet">';
+  if(cur){var d1=lines(cur.decisions),f1=lines(cur.followups),w=weekNo(monday(cur.date));
+    h+='<span class="lb">สัปดาห์ที่ '+w.w+'/'+(w.y+543)+'</span><h2>'+mLabel(cur)+'</h2><p class="sub" style="margin:0">'+esc(cur.title||'ประชุมติดตามงาน')+'</p>'+
+     '<h4>ผู้เข้าร่วม</h4><p style="margin:0">'+esc(cur.attendees||'ไม่ได้ระบุ')+'</p>'+
+     '<h4>มติที่ประชุม</h4>'+(d1.length?'<ol>'+d1.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ol>':'<p class="n" style="margin:0">-</p>')+
+     '<h4>งานที่ต้องตามต่อ</h4>'+(f1.length?'<ol>'+f1.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ol>':'<p class="n" style="margin:0">-</p>')+
+     '<div class="dfoot" style="justify-content:flex-start"><button class="btn" data-act="meet-open" data-v="'+cur.id+'">เปิดในรายงาน'+(canWrite()?' / แก้ไข':'')+'</button><button class="btn q" data-act="meet-copy" data-v="'+cur.id+'">คัดลอก / ส่ง LINE</button></div>';}
+  return h+'</div></div></section>';}
 
 /* ---------- setup ---------- */
 function setupHtml(){
@@ -830,6 +873,8 @@ function askNew(t){var host=t.closest('[data-id]')||t.closest('[data-inv]'),it=h
     if(it)setItem(it,f,val);back();toast('เพิ่ม "'+val+'" ในรายชื่อแล้ว');},back);}
 function field(t){var f=t.dataset.f,host;
   if(t.value==='__new'){askNew(t);return;}
+  if(t.dataset.flt==='msel'){MSEL=t.value;rerender();return;}
+  if(t.dataset.flt==='mq'){F.mq=t.value;rerender();return;}
   if(t.dataset.flt){if(t.dataset.flt==='group')group=t.value;else F[t.dataset.flt]=t.value;rerender();return;}
   if(t.dataset.meta){var mk=t.dataset.meta,mv;
     if(mk==='projects')mv=t.value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
@@ -845,7 +890,8 @@ function field(t){var f=t.dataset.f,host;
     else{if((iv0.inv[f]||'')===val)return;mutate(function(){ivc=clone(iv0.inv);ivc[f]=val;iv0.inv=ivc;});}
     flash=iv0.id;later();return;}
   if((host=t.closest('[data-id]'))){var i=item(host.dataset.id);if(i&&setItem(i,f,t.value))later();return;}
-  if((host=t.closest('[data-min]'))){var wk=host.dataset.min,m=minutesOf(wk);if((m[f]||'')!==t.value){mutate(function(){m[f]=t.value;S.minutes[wk]=m;});later();}return;}
+  if((host=t.closest('[data-mt]'))){var mt=meeting(host.dataset.mt);if(!mt)return;if(f==='date'&&!t.value){later();return;}
+    if((mt[f]||'')!==t.value){mutate(function(){mt[f]=t.value;});if(f==='date'){MSEL=mt.id;WK=monday(t.value);try{sessionStorage.setItem('bpc-wk',WK);}catch(x){}}later();}return;}
   if((host=t.closest('[data-dept]'))){var d=dept(host.dataset.dept);if(!d)return;var v=f==='procure'?t.checked:f==='topics'?t.value.split('\n').map(function(s){return s.trim();}).filter(Boolean):f==='minutes'?+t.value:t.value.trim();
     if(JSON.stringify(d[f])!==JSON.stringify(v)){mutate(function(){d[f]=v;});later();}}}
 function newItem(dp,due){return {sort:Date.now()/1000,id:uid()+uid(),dept:dp,project:F.project||'',title:'',note:'',owner:F.owner||'',due:due||'',status:'todo',progress:0,stage:0,priority:'mid',needDate:'',qty:'',unit:'',supplier:'',po:'',history:[]};}
@@ -854,15 +900,16 @@ function removeItem(it){var el=document.querySelector('.row[data-id="'+it.id+'"]
   function go(){mutate(function(){var x=S.items.indexOf(it);if(x>=0)S.items.splice(x,1);});rerender();toast('ลบ "'+(it.title||'รายการ')+'" แล้ว','undo','ย้อนกลับ');}
   if(dlg.mode==='item')closeDlg();if(el&&!reduce){el.classList.add('out');setTimeout(go,220);}else go();}
 function doUndo(){if(!undo.length){toast('ไม่มีอะไรให้ย้อนกลับ');return;}S=JSON.parse(undo.pop());keep();rerender();toast('ย้อนกลับแล้ว');}
-function summaryText(){var w=weekNo(WK),all=visible(),m=minutesOf(WK),L=[],urg=all.filter(isUrgent);
+function summaryText(){var w=weekNo(WK),all=visible(),m=curMeeting()||{},L=[],urg=all.filter(isUrgent);
   L.push('รายงานติดตามงาน สัปดาห์ที่ '+w.w+' ('+range(WK)+')'+(F.project?' · '+F.project:''));
+  if(m.date)L.push('ประชุม'+mLabel(m)+(m.title?' · '+m.title:''));
   if(S.meta.meetLink)L.push('ห้องประชุม: '+S.meta.meetLink);
   L.push('รวม '+all.length+' รายการ: '+ORDER.map(function(k){return ST[k]+' '+all.filter(function(i){return i.status===k;}).length;}).join(' · '));
   if(urg.length){L.push('');L.push('⚠ ต้องรีบสั่ง (ใช้หน้างานใน '+S.meta.urgentDays+' วัน ยังไม่ออก PO)');urg.forEach(function(i){L.push('• '+i.title+' · ใช้ '+dShort(i.needDate)+' · ขั้น'+STAGES[i.stage]+(i.owner?' · '+i.owner:''));});}
   S.depts.forEach(function(d){var r=all.filter(function(i){return i.dept===d.id;}).sort(sorter);if(!r.length)return;L.push('');L.push('['+d.name+']');
     r.forEach(function(i){L.push('• '+(i.title||'-')+' — '+ST[i.status]+' '+i.progress+'%'+(d.procure?' (ขั้น'+STAGES[i.stage]+')':'')+(i.owner?' · '+i.owner:'')+(i.due?' · กำหนด '+dShort(i.due):'')+(isOver(i)?' ⚠ เกิน '+lateDays(i)+' วัน':''));if(i.inv)L.push('   งวด '+(i.inv.no||'-')+(i.inv.amount?' · '+money(i.inv.amount)+' บาท':'')+' · '+i.inv.steps.map(function(s,x){return (x+1)+'.'+INV_STEPS[x]+' '+INV_ICON[s];}).join(' ')+(i.inv.invNo?' · '+i.inv.invNo:''));if(i.note)L.push('   '+i.note);});});
   if(m.decisions){L.push('');L.push('มติที่ประชุม');L.push(m.decisions);}
-  if(m.followups){L.push('');L.push('ตามต่อสัปดาห์หน้า');L.push(m.followups);}
+  if(m.followups){L.push('');L.push('งานที่ต้องตามต่อ');L.push(m.followups);}
   return L.join('\n');}
 function csvText(){function q(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}
   var rows=[['ฝ่าย','โครงการ','รายการ','ความสำคัญ','ผู้รับผิดชอบ','กำหนดเสร็จ','คืบหน้า %','สถานะ','ขั้นตอนจัดซื้อ','วันใช้หน้างาน','จำนวน','หน่วย','ผู้ขาย','เลขที่ PO','ต้องรีบสั่ง','หมายเหตุ']];
@@ -892,7 +939,7 @@ function tickAgenda(){if(!MEET)return;var A=agendaList(),cur=A[MEET.idx],left=ME
 /* ---------- events ---------- */
 document.addEventListener('change',function(e){var t=e.target;if(t.dataset.member){memberOp(sb.from('mtg_members').update({role:t.value}).eq('user_id',t.dataset.member),'เปลี่ยนสิทธิ์แล้ว');return;}if(t.id==='addm'||t.id==='addr')return;if(t.type!=='date')field(t);});
 document.addEventListener('focusout',function(e){if(e.target.type==='date')field(e.target);});
-document.addEventListener('input',function(e){var t=e.target;if(t.matches('textarea.in'))grow(t);if(t.dataset.flt==='q'){F.q=t.value;rerender();}});
+document.addEventListener('input',function(e){var t=e.target;if(t.matches('textarea.in'))grow(t);if(t.dataset.flt==='q'){F.q=t.value;rerender();}if(t.dataset.flt==='mq'){F.mq=t.value;rerender();}});
 document.addEventListener('keydown',function(e){
   if(menuCtx){var bs=$$('#menu button'),ix=bs.indexOf(document.activeElement);
     if(e.key==='Escape'){var b=menuCtx.btn;closeMenu();b.focus();e.preventDefault();return;}
@@ -927,7 +974,12 @@ document.addEventListener('click',function(e){
   else if(a==='del'&&it)removeItem(it);
   else if(a==='wk'){WK=v==='0'?monday(TODAY):addDays(WK,7*(+v));try{sessionStorage.setItem('bpc-wk',WK);}catch(x){}rerender();}
   else if(a==='set-link'){e.preventDefault();go('setup');setTimeout(function(){var f=document.querySelector('[data-meta="meetLink"]');if(f){f.scrollIntoView({block:'center'});f.focus();}},80);}
-  else if(a==='goto'){WK=v;try{sessionStorage.setItem('bpc-wk',WK);}catch(x){}go('report');}
+  else if(a==='msel'){MSEL=v;rerender();}
+  else if(a==='arch'){ARCH=v;rerender();}
+  else if(a==='meet-new'){if(!canWrite())return;var nd=(TODAY>=WK&&TODAY<=addDays(WK,6))?TODAY:WK,nm={id:uid()+uid(),date:nd,title:'',attendees:'',decisions:'',followups:''};mutate(function(){S.meetings.push(nm);});MSEL=nm.id;rerender();var at=document.querySelector('[data-k="mt:title"]');if(at)at.focus();toast('เพิ่มบันทึกการประชุมวันที่ '+dFull(nd)+' แล้ว เปลี่ยนวันที่ได้ในช่องวันประชุม');}
+  else if(a==='meet-del'){var dm=curMeeting();if(dm){mutate(function(){S.meetings=S.meetings.filter(function(x){return x.id!==dm.id;});});MSEL=null;rerender();toast('ลบบันทึกการประชุมวันที่ '+dFull(dm.date)+' แล้ว','undo','ย้อนกลับ');}}
+  else if(a==='meet-open'){var om=meeting(v);if(om){MSEL=om.id;WK=monday(om.date);try{sessionStorage.setItem('bpc-wk',WK);}catch(x){}go('report');setTimeout(function(){var mm=$('.min');if(mm)mm.scrollIntoView({block:'start'});},80);}}
+  else if(a==='meet-copy'){var cm=meeting(v);if(cm)textDlg('บันทึกการประชุม '+dFull(cm.date),minutesText(cm),true);}
   else if(a==='goto-dept'){e.preventDefault();pendingScroll=v;F.status='';go('report');}
   else if(a==='jump'){F.status=v;F.q='';go('report');}
   else if(a==='cal'){var f0=CAL||TODAY.slice(0,8)+'01',d=utc(f0);CAL=v==='0'?null:iso(new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+(+v),1)));anim=true;render();}
@@ -962,7 +1014,7 @@ document.addEventListener('dragend',function(){dragId=null;$$('.col.hot').forEac
 var IMAP={dept:'dept_id',project:'project',title:'title',note:'note',owner:'owner',due:'due',status:'status',progress:'progress',stage:'stage',priority:'priority',needDate:'need_date',qty:'qty',unit:'unit',supplier:'supplier',po:'po',sort:'sort',inv:'inv'};
 function itemRow(i){var r={id:i.id};for(var k in IMAP){var v=i[k];if((k==='due'||k==='needDate')&&!v)v=null;if(k==='sort')v=+v||0;if(k==='inv')v=v||null;r[IMAP[k]]=v;}return r;}
 function deptRow(d,x){return {id:d.id,name:d.name,procure:!!d.procure,minutes:+d.minutes||10,topics:d.topics||[],sort:x+1};}
-function minRow(w,m){return {week:w,meet_date:m.date||null,attendees:m.attendees||'',decisions:m.decisions||'',followups:m.followups||''};}
+function meetRow(m){return {id:m.id,meet_date:m.date,title:m.title||'',attendees:m.attendees||'',decisions:m.decisions||'',followups:m.followups||''};}
 function diffRow(a,b){var c=null;for(var k in b){if(k==='id'||k==='week')continue;if(JSON.stringify(a[k])!==JSON.stringify(b[k])){c=c||{};c[k]=b[k];}}return c;}
 function byId(l){var m={};l.forEach(function(x,i){m[x.id]=[x,i];});return m;}
 function chk(r){if(r&&r.error)throw r.error;return r;}
@@ -976,19 +1028,20 @@ async function pushDiff(a,b,hq){
   (await Promise.all(ps)).forEach(chk);
   var hq2=hq.filter(function(h){return bi[h.item_id];});if(hq2.length)chk(await sb.from('mtg_item_history').insert(hq2));
   ps=[];a.depts.forEach(function(d){if(!bd[d.id])ps.push(sb.from('mtg_depts').delete().eq('id',d.id));});
-  Object.keys(b.minutes).forEach(function(w){var r=minRow(w,b.minutes[w]),o=a.minutes[w];if(!o||diffRow(minRow(w,o),r))ps.push(sb.from('mtg_minutes').upsert(r));});
+  var am=byId(a.meetings||[]),bm=byId(b.meetings||[]);(a.meetings||[]).forEach(function(m){if(!bm[m.id])ps.push(sb.from('mtg_meetings').delete().eq('id',m.id));});
+  (b.meetings||[]).forEach(function(m){var r=meetRow(m),o=am[m.id];if(!o)ps.push(sb.from('mtg_meetings').insert(r));else{var c=diffRow(meetRow(o[0]),r);if(c)ps.push(sb.from('mtg_meetings').update(c).eq('id',m.id));}});
   (await Promise.all(ps)).forEach(chk);}
 function queueSync(){var prev=SYNCED,next=clone(S),hq=HQ.splice(0);SYNCED=next;SY.n++;SY.err=null;syncBadge();
   SY.q=SY.q.then(function(){return pushDiff(prev,next,hq);}).then(function(){SY.n--;syncBadge();if(!SY.n&&pullPending)pullSoon();},
     function(e){SY.n--;SY.err=e;console.error(e);syncBadge();toast('บันทึกไม่สำเร็จ: '+(e.message||e)+' กด "ลองอีกครั้ง" ที่มุมขวาบน');});}
 async function retrySync(){try{var fresh=await fetchAll();SYNCED=fresh;SY.err=null;queueSync();}catch(e){toast('ยังเชื่อมต่อไม่ได้: '+(e.message||e));}}
 async function fetchAll(){
-  var r=await Promise.all([sb.from('mtg_settings').select('data').eq('id',1).maybeSingle(),sb.from('mtg_depts').select('*').order('sort'),sb.from('mtg_items').select('*').order('sort'),sb.from('mtg_minutes').select('*'),
+  var r=await Promise.all([sb.from('mtg_settings').select('data').eq('id',1).maybeSingle(),sb.from('mtg_depts').select('*').order('sort'),sb.from('mtg_items').select('*').order('sort'),sb.from('mtg_meetings').select('*').order('meet_date'),
     sb.from('mtg_item_history').select('item_id,at,text,by_name').order('at',{ascending:false}).limit(2000),sb.from('projects').select('name,status').order('created_at'),sb.from('profiles').select('id,display_name,role'),sb.from('mtg_members').select('user_id,role,added_at')]);
   r.forEach(chk);
   var st={meta:(r[0].data&&r[0].data.data)||{},depts:r[1].data.map(function(d){return {id:d.id,name:d.name,procure:d.procure,minutes:d.minutes,topics:d.topics||[]};}),minutes:{},
     items:r[2].data.map(function(x){return {id:x.id,dept:x.dept_id,project:x.project,title:x.title,note:x.note,owner:x.owner,due:x.due||'',status:x.status,progress:x.progress,stage:x.stage,priority:x.priority,needDate:x.need_date||'',qty:x.qty,unit:x.unit,supplier:x.supplier,po:x.po,sort:x.sort,inv:x.inv||null};})};
-  r[3].data.forEach(function(m){st.minutes[m.week]={date:m.meet_date||'',attendees:m.attendees,decisions:m.decisions,followups:m.followups};});
+  st.meetings=r[3].data.map(function(m){return {id:m.id,date:m.meet_date,title:m.title||'',attendees:m.attendees||'',decisions:m.decisions||'',followups:m.followups||''};});
   var H={};r[4].data.forEach(function(h){(H[h.item_id]=H[h.item_id]||[]).push({t:h.at,x:h.text+(h.by_name?' · '+h.by_name:'')});});
   st.items.forEach(function(i){i.history=(H[i.id]||[]).slice(0,30);});
   PROJ_DB=(r[5].data||[]).filter(function(p){return p.status!=='closed';}).map(function(p){return p.name;});PROFILES=r[6].data||[];MEMBERS=r[7].data||[];
@@ -1001,7 +1054,7 @@ async function pull(){if(editing()||SY.n){pullPending=true;return;}pullPending=f
   try{var fresh=await fetchAll();if(SY.n||editing()){pullPending=true;return;}S=fresh;SYNCED=clone(fresh);undo=[];rerender();}catch(e){console.error(e);}}
 function onRemote(p){var n=p&&p.new;if(n&&(n.updated_by===ME.id||n.by===ME.id))return;pullSoon();}
 document.addEventListener('focusout',function(){if(pullPending)setTimeout(function(){if(pullPending)pull();},50);});
-function subscribe(){var ch=sb.channel('mtg-hub');['mtg_settings','mtg_depts','mtg_items','mtg_minutes','mtg_item_history','mtg_members'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},onRemote);});ch.subscribe();}
+function subscribe(){var ch=sb.channel('mtg-hub');['mtg_settings','mtg_depts','mtg_items','mtg_meetings','mtg_item_history','mtg_members'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},onRemote);});ch.subscribe();}
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&ME)pullSoon();});
 
 /* ---------- members (who may open the meeting hub) ---------- */
