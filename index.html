@@ -182,6 +182,11 @@ button.kpi:hover{border-color:var(--ink)}
 .tchip.k-need{border-left-color:var(--brand);border-left-style:dashed}
 .tchip em{display:block;font-style:normal;font-size:11px;color:var(--brand);font-weight:600;text-decoration:none}
 .tchip:hover{box-shadow:inset 0 0 0 1px var(--ink)}
+.tchip.ev{border-left-width:4px;border-left-color:var(--evc);background:color-mix(in srgb,var(--evc) 9%,var(--sheet))}
+.tchip.ev em{color:var(--evc)}
+.evl{list-style:none;margin:0;padding:0}.evl li{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--hair);font-size:14px}
+.evl time{font:500 13px var(--f-mono)}.evl small{display:block;color:var(--mute);font-size:12.5px}
+.evk{display:inline-block;font-size:11.5px;font-weight:600;padding:0 8px;border-radius:2px;color:#fff;white-space:nowrap}
 .wr{display:grid;grid-template-columns:minmax(80px,140px) minmax(0,1fr) 26px;gap:10px;align-items:center;padding:6px 0;font-size:14px;border-bottom:1px solid var(--hair)}
 .wr span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wb{display:flex;height:14px;background:var(--soft)}
@@ -540,7 +545,7 @@ function norm(s){
   s.depts=s.depts||[];s.depts.forEach(function(d){d.topics=d.topics||[];d.minutes=+d.minutes||10;d.procure=!!d.procure;});
   s.items=s.items||[];s.items.forEach(function(i){i.priority=i.priority||'mid';i.progress=+i.progress||0;i.stage=+i.stage||0;i.history=i.history||[];
     ['needDate','qty','unit','supplier','po','note','owner','project','due','title'].forEach(function(k){if(i[k]==null)i[k]='';});if(i.inv){i.inv.steps=i.inv.steps||['todo','todo','todo','todo'];['no','amount','due','invNo','invDate'].forEach(function(k){if(i.inv[k]==null)i.inv[k]='';});}else i.inv=null;});
-  s.minutes=s.minutes||{};s.meetings=s.meetings||[];s.meetings.forEach(function(m){['title','attendees','decisions','followups','date'].forEach(function(k){if(m[k]==null)m[k]='';});});return s;}
+  s.minutes=s.minutes||{};s.events=s.events||[];s.events.forEach(function(e){['time','kind','title','project','note'].forEach(function(k){if(e[k]==null)e[k]='';});});s.meetings=s.meetings||[];s.meetings.forEach(function(m){['title','attendees','decisions','followups','date'].forEach(function(k){if(m[k]==null)m[k]='';});});return s;}
 var sb=null, ME=null, ROLE=null, S=norm({}), SYNCED=clone(S), undo=[], HQ=[], PROFILES=[], MEMBERS=[], PROJ_DB=[], SY={n:0,err:null,q:Promise.resolve()};
 var ROLES={admin:'ผู้ดูแล',editor:'แก้ไขได้',viewer:'ดูอย่างเดียว'};
 var F={q:'',project:'',owner:'',status:'',sort:'due'}, group='status', CAL=null;
@@ -594,6 +599,22 @@ function ownOpts(v){return opts(people().map(function(p){return [p.name,p.name+(
 function needChip(i,k){var cls='',lbl='';if(i.needDate&&i.status!=='done'){var d=diffDays(TODAY,i.needDate);if(d<0){cls=' past';lbl=' · เลยมา '+(-d)+' วัน';}else if(d<=S.meta.urgentDays){cls=' soon';lbl=d===0?' · วันนี้':' · อีก '+d+' วัน';}}
   return '<label class="md'+cls+'">ใช้หน้างาน<input type="date" data-f="needDate" data-k="'+k+'need" value="'+esc(i.needDate)+'" aria-label="วันที่ต้องใช้หน้างาน">'+lbl+'</label>';}
 function seg(s){var h='<span class="seg" aria-hidden="true">';for(var x=0;x<STAGES.length;x++)h+='<i class="'+(x<=s?'on':'')+'"></i>';return h+'</span>';}
+var EVK=[['onsite','วัสดุเข้าไซต์','#0f7d86'],['meeting','ประชุม / นัดหมาย','#8a4b1c'],['milestone','กำหนดการสำคัญ','#6b4bb8'],['inspect','ตรวจรับ / ส่งมอบงาน','#1d7a4c'],['other','อื่น ๆ','#7d868b']];
+function evk(k){return EVK.find(function(x){return x[0]===k;})||EVK[4];}
+function evOn(ds){return (S.events||[]).filter(function(e){return e.date===ds&&(!F.project||!e.project||e.project===F.project);}).sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});}
+function evChip(e){var k=evk(e.kind);return '<button class="tchip ev" style="--evc:'+k[2]+'" data-act="open-ev" data-v="'+e.id+'" title="'+esc(k[1]+' · '+e.title+(e.project?' · '+e.project:''))+'"><em>'+k[1]+(e.time?' · '+esc(e.time):'')+'</em>'+esc(e.title||'(ยังไม่ตั้งชื่อ)')+'</button>';}
+function mtChips(ds){return (S.meetings||[]).filter(function(m){return m.date===ds;}).map(function(m){return '<button class="tchip ev" style="--evc:#8a4b1c" data-act="meet-open" data-v="'+m.id+'" title="เปิดบันทึกการประชุม"><em>บันทึกการประชุม</em>'+esc(m.title||'ประชุมติดตามงาน')+'</button>';}).join('');}
+function newEvent(ds){if(!canWrite())return;var e={id:uid()+uid(),date:ds||TODAY,time:'',kind:'onsite',title:'',project:F.project||'',note:''};mutate(function(){S.events.push(e);});dlg.item=e.id;evDlg();rerender();var t=$('#dbox [data-f="title"]');if(t)t.focus();}
+function evDlg(){var e=(S.events||[]).find(function(x){return x.id===dlg.item;});if(!e){closeDlg();return;}dlg.mode='ev';var k='e:'+e.id+':';
+  $('#dbox').innerHTML='<h3>เหตุการณ์สำคัญ</h3><div class="mg" data-ev="'+e.id+'">'+
+   '<label class="wide">หัวข้อ<input class="box" data-f="title" data-k="'+k+'title" value="'+esc(e.title)+'" placeholder="เช่น เหล็กเสริมเข้าไซต์ 12 ตัน, ประชุมกับเจ้าของงาน"></label>'+
+   '<label>ประเภท<select class="box" data-f="kind" data-k="'+k+'kind">'+opts(EVK.map(function(x){return [x[0],x[1]];}),e.kind)+'</select></label>'+
+   '<label>โครงการ<select class="box" data-f="project" data-k="'+k+'project">'+opts(projects().map(function(p){return [p,p];}),e.project,'','— ไม่ระบุโครงการ —')+'</select></label>'+
+   '<label>วันที่<input type="date" class="box" data-f="date" data-k="'+k+'date" value="'+esc(e.date)+'"></label>'+
+   '<label>เวลา (ถ้ามี)<input type="time" class="box" data-f="time" data-k="'+k+'time" value="'+esc(e.time)+'"></label>'+
+   '<label class="wide">รายละเอียด<textarea class="box" data-f="note" data-k="'+k+'note" placeholder="เช่น ผู้ขาย จำนวน ผู้ประสานงาน สถานที่">'+esc(e.note)+'</textarea></label>'+
+   '<div class="wide dfoot">'+(canWrite()?'<button class="btn bad" data-act="ev-del">ลบเหตุการณ์</button>':'')+'<span style="flex:1"></span><button class="btn pri" data-act="close">เสร็จ</button></div></div>';openDlg();}
+function addOn(ds){var dp=(F.status==='urgent'?(S.depts.find(function(d){return d.procure;})||S.depts[0]):S.depts[0]).id,ni=newItem(dp,ds);mutate(function(){S.items.push(ni);});dlg.item=ni.id;render();itemDlg();var t=$('#dbox [data-f="title"]');if(t)t.focus();}
 function chip(i,kind){return '<button class="tchip s-'+i.status+(kind?' k-'+kind:'')+'" data-act="open-item" data-v="'+i.id+'" title="'+esc(i.title)+'">'+(kind==='need'?'<em>ใช้หน้างาน</em>':'')+esc(i.title||'(ยังไม่ตั้งชื่อ)')+'</button>';}
 function notesHtml(){var h='';var stale=false;
   if(stale)h+='<div class="note"><span>ทีมบันทึกเวอร์ชันใหม่แล้ว แต่ในเครื่องนี้ยังมีแบบร่างที่คุณแก้ค้างไว้</span><button class="btn" data-act="use-draft">ใช้แบบร่างของฉัน</button><button class="btn q" data-act="drop-draft">ทิ้งแบบร่าง</button></div>';
@@ -628,9 +649,9 @@ function overviewHtml(){
     return '<a class="dp" href="#report" data-act="goto-dept" data-v="'+d.id+'"><span class="no">'+pad(x+1)+'</span><h3>'+esc(d.name)+'</h3><span class="r">'+a+'%</span><span class="gb"><i style="width:'+a+'%"></i></span><small>เสร็จ '+done+'/'+L.length+' รายการ'+(bad?' · <em>'+bad+' ล่าช้าหรือเกินกำหนด</em>':'')+'</small></a>';}).join('')+'</section>';
   var P=items.filter(function(i){return isProc(i)&&i.status!=='done';}),pc=STAGES.map(function(_,x){return P.filter(function(i){return i.stage===x;}).length;}),mx=Math.max.apply(null,[1].concat(pc));
   h+='<section class="panel c6 rise" style="--i:'+(n++)+'"><header class="ph"><h2>สถานะจัดซื้อจัดจ้าง</h2><span class="mono">'+P.length+' รายการที่ยังไม่จบ</span></header><div class="pipe">'+STAGES.map(function(s,x){return '<div class="pp'+(x<PO_STAGE?' pre':'')+'" style="--i:'+x+'"><b class="mono">'+pc[x]+'</b><span class="pp-bar"><i style="height:'+(pc[x]/mx*100)+'%"></i></span><small>'+(x+1)+'. '+s+'</small></div>';}).join('')+'</div>'+(S.depts.some(function(d){return d.procure;})?'':'<p class="sub" style="margin:10px 0 0">ยังไม่ได้เปิดติดตามขั้นตอนจัดซื้อในฝ่ายใดเลย เปิดได้ที่ <a href="#setup">ตั้งค่า</a> โดยติ๊ก "ติดตามขั้นตอนจัดซื้อและวันใช้หน้างาน" ของฝ่ายจัดซื้อ</p>')+'<div class="pnote"><span><i class="sw" style="background:var(--warn)"></i>ยังไม่ออก PO</span><span><i class="sw" style="background:var(--ink)"></i>ออก PO แล้ว</span></div></section>';
-  var over2=items.filter(isOver);h+='<section class="panel c12 rise" style="--i:'+(n++)+'"><header class="ph"><h2>14 วันข้างหน้า</h2><span class="mono">กำหนดเสร็จ และวันที่ต้องใช้วัสดุหน้างาน</span><a class="lnk" href="#calendar">เปิดปฏิทิน</a></header><div class="tl"><div class="tl-col late-col"><div class="tl-h"><b>เลยกำหนด</b><span>'+over2.length+'</span></div>'+over2.map(function(i){return chip(i);}).join('')+'</div>';
+  var over2=items.filter(isOver);h+='<section class="panel c12 rise" style="--i:'+(n++)+'"><header class="ph"><h2>14 วันข้างหน้า</h2><span class="mono">กำหนดเสร็จ วันใช้วัสดุหน้างาน และเหตุการณ์สำคัญ</span><a class="lnk" href="#calendar">เปิดปฏิทิน</a></header><div class="tl"><div class="tl-col late-col"><div class="tl-h"><b>เลยกำหนด</b><span>'+over2.length+'</span></div>'+over2.map(function(i){return chip(i);}).join('')+'</div>';
   for(var x=0;x<14;x++){var ds=addDays(TODAY,x),wd=utc(ds).getUTCDay(),L1=items.filter(function(i){return i.status!=='done'&&i.due===ds;}),L2=items.filter(function(i){return i.status!=='done'&&isProc(i)&&i.needDate===ds;});
-    h+='<div class="tl-col'+(x===0?' today':'')+(wd===0||wd===6?' wkend':'')+'"><div class="tl-h"><b>'+DAYS[wd]+' '+utc(ds).getUTCDate()+'</b><span>'+(x===0?'วันนี้':MON[utc(ds).getUTCMonth()])+'</span></div>'+L1.map(function(i){return chip(i);}).join('')+L2.map(function(i){return chip(i,'need');}).join('')+'</div>';}
+    h+='<div class="tl-col'+(x===0?' today':'')+(wd===0||wd===6?' wkend':'')+'"><div class="tl-h"><b>'+DAYS[wd]+' '+utc(ds).getUTCDate()+'</b><span>'+(x===0?'วันนี้':MON[utc(ds).getUTCMonth()])+'</span></div>'+evOn(ds).map(evChip).join('')+mtChips(ds)+L1.map(function(i){return chip(i);}).join('')+L2.map(function(i){return chip(i,'need');}).join('')+'</div>';}
   h+='</div></section>';
   var ow={};open.forEach(function(i){var o=i.owner||'(ยังไม่ระบุ)';ow[o]=ow[o]||{l:0,d:0,r:0,t:0};if(isOver(i))ow[o].l++;else if(i.status==='delayed')ow[o].d++;else ow[o].r++;ow[o].t++;});
   var ok=Object.keys(ow).sort(function(a,b){return ow[b].t-ow[a].t;}),wm=Math.max.apply(null,[1].concat(ok.map(function(k){return ow[k].t;})));
@@ -707,10 +728,12 @@ function boardHtml(){
 /* ---------- calendar ---------- */
 function calendarHtml(){var first=CAL||TODAY.slice(0,8)+'01',d0=utc(first),y=d0.getUTCFullYear(),mo=d0.getUTCMonth(),last=iso(new Date(Date.UTC(y,mo+1,0))),s=monday(first),e=addDays(monday(last),6),n=0;
   var h=notesHtml()+'<section class="sheet"><div class="calh"><h1 class="h">'+MONF[mo]+' '+(y+543)+'</h1><div class="acts"><button class="ib" data-act="cal" data-v="-1" aria-label="เดือนก่อน">‹</button><button class="btn q" data-act="cal" data-v="0">เดือนนี้</button><button class="ib" data-act="cal" data-v="1" aria-label="เดือนถัดไป">›</button></div>'+
-    '<div class="legend"><span><i class="sw" style="background:var(--warn)"></i>กำลังทำ</span><span><i class="sw" style="background:var(--bad)"></i>ล่าช้า</span><span><i class="sw" style="background:var(--ok)"></i>เสร็จ</span><span><i class="sw" style="border:1.5px dashed var(--brand)"></i>วันที่ต้องใช้วัสดุหน้างาน</span></div></div><div class="calw"><div class="cal">'+['จ.','อ.','พ.','พฤ.','ศ.','ส.','อา.'].map(function(d){return '<div class="cal-d">'+d+'</div>';}).join('');
+    '<div class="legend"><span><i class="sw" style="background:var(--warn)"></i>กำลังทำ</span><span><i class="sw" style="background:var(--bad)"></i>ล่าช้า</span><span><i class="sw" style="background:var(--ok)"></i>เสร็จ</span><span><i class="sw" style="border:1.5px dashed var(--brand)"></i>วันที่ต้องใช้วัสดุหน้างาน</span>'+EVK.map(function(k){return '<span><i class="sw" style="background:'+k[2]+'"></i>'+k[1]+'</span>';}).join('')+'</div>'+(canWrite()?'<button class="btn pri edit" data-act="ev-new">+ เหตุการณ์สำคัญ</button>':'')+'</div><div class="calw"><div class="cal">'+['จ.','อ.','พ.','พฤ.','ศ.','ส.','อา.'].map(function(d){return '<div class="cal-d">'+d+'</div>';}).join('');
   for(var ds=s;ds<=e;ds=addDays(ds,1)){var inM=ds.slice(0,7)===first.slice(0,7),L1=S.items.filter(function(i){return i.due===ds;}),L2=S.items.filter(function(i){return i.needDate===ds&&isProc(i)&&i.status!=='done';});
-    h+='<div class="cal-c rise'+(inM?'':' dim')+(ds===TODAY?' today':'')+'" style="--i:'+(n++)+'"><div class="cal-n"><span>'+utc(ds).getUTCDate()+'</span><button class="cal-add edit" data-act="add-on" data-v="'+ds+'" aria-label="เพิ่มรายการวันที่ '+dFull(ds)+'">+</button></div>'+L1.map(function(i){return chip(i);}).join('')+L2.map(function(i){return chip(i,'need');}).join('')+'</div>';}
-  return h+'</div></div></section>';}
+    h+='<div class="cal-c rise'+(inM?'':' dim')+(ds===TODAY?' today':'')+'" style="--i:'+(n++)+'"><div class="cal-n"><span>'+utc(ds).getUTCDate()+'</span><button class="cal-add edit" data-act="cal-add" data-v="'+ds+'" aria-haspopup="menu" aria-expanded="false" aria-label="เพิ่มในวันที่ '+dFull(ds)+'">+</button></div>'+evOn(ds).map(evChip).join('')+mtChips(ds)+L1.map(function(i){return chip(i);}).join('')+L2.map(function(i){return chip(i,'need');}).join('')+'</div>';}
+  var up=(S.events||[]).filter(function(e){return e.date>=TODAY&&e.date<=addDays(TODAY,30)&&(!F.project||!e.project||e.project===F.project);}).sort(function(a,b){return (a.date+a.time).localeCompare(b.date+b.time);});
+  h+='</div></div><div class="dh" style="margin-top:22px"><h2>เหตุการณ์สำคัญ 30 วันข้างหน้า</h2><span class="ct">'+up.length+' รายการ</span></div>'+(up.length?'<ul class="evl">'+up.map(function(e){var k=evk(e.kind);return '<li><time>'+dShort(e.date)+(e.time?' '+esc(e.time):'')+'</time><span><b style="font-weight:500">'+esc(e.title||'(ยังไม่ตั้งชื่อ)')+'</b><small>'+(e.project?esc(e.project)+' · ':'')+esc(e.note||'')+'</small></span><span><span class="evk" style="background:'+k[2]+'">'+k[1]+'</span> <button class="btn q" data-act="open-ev" data-v="'+e.id+'">เปิด</button></span></li>';}).join('')+'</ul>':'<div class="empty">ยังไม่มีเหตุการณ์สำคัญใน 30 วันข้างหน้า'+(canWrite()?' กด "+ เหตุการณ์สำคัญ" หรือกด + ในช่องวันที่':'')+'</div>');
+  return h+'</section>';}
 
 /* ---------- minutes archive ---------- */
 function minutesText(m){var L=['บันทึกการประชุม '+mLabel(m)+(m.title?' · '+m.title:'')];if(m.attendees)L.push('ผู้เข้าร่วม: '+m.attendees);
@@ -841,7 +864,7 @@ function render(){var v=view();if(v!==lastView){anim=true;lastView=v;}
   $('#co').textContent=S.meta.company;
   var el=$('#view');el.className=anim?'anim':'';
   el.innerHTML=v==='report'?reportHtml():v==='invoice'?invoiceHtml():v==='board'?boardHtml():v==='calendar'?calendarHtml():v==='minutes'?minutesHtml():v==='setup'?setupHtml():overviewHtml();
-  $$('textarea.in').forEach(grow);saveBar();if(dlg.mode==='item')itemDlg();else if(dlg.mode==='inv')invDlg();
+  $$('textarea.in').forEach(grow);saveBar();if(dlg.mode==='item')itemDlg();else if(dlg.mode==='inv')invDlg();else if(dlg.mode==='ev')evDlg();
   if(flash){var f=document.querySelector('.row[data-id="'+flash+'"],.card[data-card="'+flash+'"]');if(f)f.classList.add('flash');flash=null;}
   if(anim){countUp();var a0=anim;setTimeout(function(){if(el.className==='anim')el.className='';},1200);}
   anim=false;spotlight();lockRO();
@@ -883,6 +906,7 @@ function field(t){var f=t.dataset.f,host;
     if(mk==='meetLink'&&mv&&!/^https?:\/\//i.test(mv))mv='https://'+mv;
     if(JSON.stringify(S.meta[mk])!==JSON.stringify(mv)){mutate(function(){S.meta[mk]=mv;});later();}return;}
   if(!f)return;
+  if((host=t.closest('[data-ev]'))){var ev=(S.events||[]).find(function(x){return x.id===host.dataset.ev;});if(!ev)return;if(f==='date'&&!t.value){later();return;}if((ev[f]||'')!==t.value){mutate(function(){ev[f]=t.value;});later();}return;}
   if((host=t.closest('[data-inv]'))){var iv0=item(host.dataset.inv);if(!iv0||!iv0.inv)return;
     if(f==='title'||f==='project'||f==='owner'){if(setItem(iv0,f,t.value))later();return;}
     var val=f==='amount'?t.value.replace(/,/g,'').trim():t.value,ivc=null;
@@ -908,6 +932,8 @@ function summaryText(){var w=weekNo(WK),all=visible(),m=curMeeting()||{},L=[],ur
   if(urg.length){L.push('');L.push('⚠ ต้องรีบสั่ง (ใช้หน้างานใน '+S.meta.urgentDays+' วัน ยังไม่ออก PO)');urg.forEach(function(i){L.push('• '+i.title+' · ใช้ '+dShort(i.needDate)+' · ขั้น'+STAGES[i.stage]+(i.owner?' · '+i.owner:''));});}
   S.depts.forEach(function(d){var r=all.filter(function(i){return i.dept===d.id;}).sort(sorter);if(!r.length)return;L.push('');L.push('['+d.name+']');
     r.forEach(function(i){L.push('• '+(i.title||'-')+' — '+ST[i.status]+' '+i.progress+'%'+(d.procure?' (ขั้น'+STAGES[i.stage]+')':'')+(i.owner?' · '+i.owner:'')+(i.due?' · กำหนด '+dShort(i.due):'')+(isOver(i)?' ⚠ เกิน '+lateDays(i)+' วัน':''));if(i.inv)L.push('   งวด '+(i.inv.no||'-')+(i.inv.amount?' · '+money(i.inv.amount)+' บาท':'')+' · '+i.inv.steps.map(function(s,x){return (x+1)+'.'+INV_STEPS[x]+' '+INV_ICON[s];}).join(' ')+(i.inv.invNo?' · '+i.inv.invNo:''));if(i.note)L.push('   '+i.note);});});
+  var ue=(S.events||[]).filter(function(e){return e.date>=TODAY&&e.date<=addDays(TODAY,7)&&(!F.project||!e.project||e.project===F.project);}).sort(function(a,b){return (a.date+a.time).localeCompare(b.date+b.time);});
+  if(ue.length){L.push('');L.push('📌 กำหนดการสำคัญ 7 วันข้างหน้า');ue.forEach(function(e){L.push('• '+dShort(e.date)+(e.time?' '+e.time:'')+' · '+evk(e.kind)[1]+' · '+(e.title||'-')+(e.project?' ('+e.project+')':''));});}
   if(m.decisions){L.push('');L.push('มติที่ประชุม');L.push(m.decisions);}
   if(m.followups){L.push('');L.push('งานที่ต้องตามต่อ');L.push(m.followups);}
   return L.join('\n');}
@@ -960,6 +986,10 @@ document.addEventListener('click',function(e){
   else if(a==='export-menu'){if(wasMenu===b)return;exportMenu(b);}
   else if(a==='open'){if(e.target.closest('button'))return;dlg.item=b.dataset.card;itemDlg();}
   else if(a==='open-item'){dlg.item=v;itemDlg();}
+  else if(a==='open-ev'){dlg.item=v;evDlg();}
+  else if(a==='ev-new')newEvent(TODAY);
+  else if(a==='ev-del'){var de=(S.events||[]).find(function(x){return x.id===dlg.item;});if(de){mutate(function(){S.events=S.events.filter(function(x){return x!==de;});});closeDlg();rerender();toast('ลบเหตุการณ์แล้ว','undo','ย้อนกลับ');}}
+  else if(a==='cal-add'){if(wasMenu===b)return;var cd=v;openMenu(b,[{label:'เหตุการณ์สำคัญ',hint:'วัสดุเข้าไซต์ กำหนดการ',ic:IC.open,run:function(){newEvent(cd);}},{label:'รายการติดตามงาน',hint:'กำหนดเสร็จวันนี้',ic:IC.dup,run:function(){addOn(cd);}}]);}
   else if(a==='inv'&&it)openInv(it);
   else if(a==='open-inv'){dlg.item=v;invDlg();}
   else if(a==='inv-new'){if(!canWrite())return;var idp=S.depts.find(function(d){return /เบิก|เอกสาร/.test(d.name);})||S.depts[0],nv=newItem(idp.id,'');nv.inv=invNew();mutate(function(){S.items.push(nv);log(nv,'เพิ่มงวดงาน');});dlg.item=nv.id;invDlg();render();var tt0=$('#dbox [data-f="title"]');if(tt0)tt0.focus();}
@@ -1014,6 +1044,7 @@ document.addEventListener('dragend',function(){dragId=null;$$('.col.hot').forEac
 var IMAP={dept:'dept_id',project:'project',title:'title',note:'note',owner:'owner',due:'due',status:'status',progress:'progress',stage:'stage',priority:'priority',needDate:'need_date',qty:'qty',unit:'unit',supplier:'supplier',po:'po',sort:'sort',inv:'inv'};
 function itemRow(i){var r={id:i.id};for(var k in IMAP){var v=i[k];if((k==='due'||k==='needDate')&&!v)v=null;if(k==='sort')v=+v||0;if(k==='inv')v=v||null;r[IMAP[k]]=v;}return r;}
 function deptRow(d,x){return {id:d.id,name:d.name,procure:!!d.procure,minutes:+d.minutes||10,topics:d.topics||[],sort:x+1};}
+function evRow(e){return {id:e.id,ev_date:e.date,ev_time:e.time||'',kind:e.kind||'other',title:e.title||'',project:e.project||'',note:e.note||''};}
 function meetRow(m){return {id:m.id,meet_date:m.date,title:m.title||'',attendees:m.attendees||'',decisions:m.decisions||'',followups:m.followups||''};}
 function diffRow(a,b){var c=null;for(var k in b){if(k==='id'||k==='week')continue;if(JSON.stringify(a[k])!==JSON.stringify(b[k])){c=c||{};c[k]=b[k];}}return c;}
 function byId(l){var m={};l.forEach(function(x,i){m[x.id]=[x,i];});return m;}
@@ -1028,6 +1059,8 @@ async function pushDiff(a,b,hq){
   (await Promise.all(ps)).forEach(chk);
   var hq2=hq.filter(function(h){return bi[h.item_id];});if(hq2.length)chk(await sb.from('mtg_item_history').insert(hq2));
   ps=[];a.depts.forEach(function(d){if(!bd[d.id])ps.push(sb.from('mtg_depts').delete().eq('id',d.id));});
+  var ae=byId(a.events||[]),be=byId(b.events||[]);(a.events||[]).forEach(function(e){if(!be[e.id])ps.push(sb.from('mtg_events').delete().eq('id',e.id));});
+  (b.events||[]).forEach(function(e){var r=evRow(e),o=ae[e.id];if(!o)ps.push(sb.from('mtg_events').insert(r));else{var c=diffRow(evRow(o[0]),r);if(c)ps.push(sb.from('mtg_events').update(c).eq('id',e.id));}});
   var am=byId(a.meetings||[]),bm=byId(b.meetings||[]);(a.meetings||[]).forEach(function(m){if(!bm[m.id])ps.push(sb.from('mtg_meetings').delete().eq('id',m.id));});
   (b.meetings||[]).forEach(function(m){var r=meetRow(m),o=am[m.id];if(!o)ps.push(sb.from('mtg_meetings').insert(r));else{var c=diffRow(meetRow(o[0]),r);if(c)ps.push(sb.from('mtg_meetings').update(c).eq('id',m.id));}});
   (await Promise.all(ps)).forEach(chk);}
@@ -1037,10 +1070,11 @@ function queueSync(){var prev=SYNCED,next=clone(S),hq=HQ.splice(0);SYNCED=next;S
 async function retrySync(){try{var fresh=await fetchAll();SYNCED=fresh;SY.err=null;queueSync();}catch(e){toast('ยังเชื่อมต่อไม่ได้: '+(e.message||e));}}
 async function fetchAll(){
   var r=await Promise.all([sb.from('mtg_settings').select('data').eq('id',1).maybeSingle(),sb.from('mtg_depts').select('*').order('sort'),sb.from('mtg_items').select('*').order('sort'),sb.from('mtg_meetings').select('*').order('meet_date'),
-    sb.from('mtg_item_history').select('item_id,at,text,by_name').order('at',{ascending:false}).limit(2000),sb.from('projects').select('name,status').order('created_at'),sb.from('profiles').select('id,display_name,role'),sb.from('mtg_members').select('user_id,role,added_at')]);
+    sb.from('mtg_item_history').select('item_id,at,text,by_name').order('at',{ascending:false}).limit(2000),sb.from('projects').select('name,status').order('created_at'),sb.from('profiles').select('id,display_name,role'),sb.from('mtg_members').select('user_id,role,added_at'),sb.from('mtg_events').select('*').order('ev_date')]);
   r.forEach(chk);
   var st={meta:(r[0].data&&r[0].data.data)||{},depts:r[1].data.map(function(d){return {id:d.id,name:d.name,procure:d.procure,minutes:d.minutes,topics:d.topics||[]};}),minutes:{},
     items:r[2].data.map(function(x){return {id:x.id,dept:x.dept_id,project:x.project,title:x.title,note:x.note,owner:x.owner,due:x.due||'',status:x.status,progress:x.progress,stage:x.stage,priority:x.priority,needDate:x.need_date||'',qty:x.qty,unit:x.unit,supplier:x.supplier,po:x.po,sort:x.sort,inv:x.inv||null};})};
+  st.events=(r[8].data||[]).map(function(e){return {id:e.id,date:e.ev_date,time:e.ev_time||'',kind:e.kind,title:e.title||'',project:e.project||'',note:e.note||''};});
   st.meetings=r[3].data.map(function(m){return {id:m.id,date:m.meet_date,title:m.title||'',attendees:m.attendees||'',decisions:m.decisions||'',followups:m.followups||''};});
   var H={};r[4].data.forEach(function(h){(H[h.item_id]=H[h.item_id]||[]).push({t:h.at,x:h.text+(h.by_name?' · '+h.by_name:'')});});
   st.items.forEach(function(i){i.history=(H[i.id]||[]).slice(0,30);});
@@ -1054,7 +1088,7 @@ async function pull(){if(editing()||SY.n){pullPending=true;return;}pullPending=f
   try{var fresh=await fetchAll();if(SY.n||editing()){pullPending=true;return;}S=fresh;SYNCED=clone(fresh);undo=[];rerender();}catch(e){console.error(e);}}
 function onRemote(p){var n=p&&p.new;if(n&&(n.updated_by===ME.id||n.by===ME.id))return;pullSoon();}
 document.addEventListener('focusout',function(){if(pullPending)setTimeout(function(){if(pullPending)pull();},50);});
-function subscribe(){var ch=sb.channel('mtg-hub');['mtg_settings','mtg_depts','mtg_items','mtg_meetings','mtg_item_history','mtg_members'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},onRemote);});ch.subscribe();}
+function subscribe(){var ch=sb.channel('mtg-hub');['mtg_settings','mtg_depts','mtg_items','mtg_meetings','mtg_item_history','mtg_members','mtg_events'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},onRemote);});ch.subscribe();}
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&ME)pullSoon();});
 
 /* ---------- members (who may open the meeting hub) ---------- */
