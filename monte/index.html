@@ -166,7 +166,9 @@ function f1(n){return (Math.round(n*10)/10).toFixed(1);}
 function money(n){return Math.round(n).toLocaleString('th-TH');}
 var TODAY=lIso(new Date());
 var TASKS=PLAN.tasks;TASKS.forEach(function(t){t.v=t.w;});var TOT=TASKS.reduce(function(a,t){return a+t.v;},0);
-TASKS.forEach(function(t){t.g=t.c.split('.')[0];t.k=null;t.b=t.c.split('.').length===3?t.c.split('.').slice(0,2).join('.'):null;t.w=t.v/TOT;var g=PLAN.groups.find(function(x){return x.c===t.g;});t.ph=g.ph;});TASKS.forEach(function(t){t.k=catOf(t);});
+TASKS.forEach(function(t){t.g=t.c.split('.')[0];t.k=null;t.b=t.c.split('.').length===3?t.c.split('.').slice(0,2).join('.'):null;t.w=t.v/TOT;var g=PLAN.groups.find(function(x){return x.c===t.g;});t.ph=g.ph;});TASKS.forEach(function(t){t.k=catOf(t);t.s0=t.s;t.e0=t.e;});
+function planPct0(t,d){if(d<t.s0)return 0;if(d>=t.e0)return 100;return (days(t.s0,d)+1)/(days(t.s0,t.e0)+1)*100;}
+function nChanged(){return TASKS.filter(function(t){return t.s!==t.s0||t.e!==t.e0;}).length;}
 var WEEKS=[];for(var w=monday(CS);w<=CE;w=add(w,7))WEEKS.push(w);
 function cut(wk){var e=add(wk,6);if(e<CS)e=CS;if(e>CE)e=CE;return e;}
 function planPct(t,d){if(d<t.s)return 0;if(d>=t.e)return 100;return (days(t.s,d)+1)/(days(t.s,t.e)+1)*100;}
@@ -187,6 +189,7 @@ function wkLabel(wk){return 'สัปดาห์ที่ '+weekNo(wk)+' ('+ds
 /* ---------- chart ---------- */
 function scurve(){var W=640,H=250,L=40,R=12,T=12,B=34,n=WEEKS.length,x=function(i){return L+(W-L-R)*i/(n-1);},y=function(p){return T+(H-T-B)*(1-p/100);};
   var pl=WEEKS.map(function(w,i){return x(i).toFixed(1)+','+y(agg(TASKS,function(t){return planPct(t,cut(w));})).toFixed(1);}).join(' ');
+  var pl0=nChanged()?WEEKS.map(function(w,i){return x(i).toFixed(1)+','+y(agg(TASKS,function(t){return planPct0(t,cut(w));})).toFixed(1);}).join(' '):'';
   var ci=WEEKS.indexOf(WK),ac=[];for(var i=0;i<=ci;i++){ac.push(x(i).toFixed(1)+','+y(agg(TASKS,function(t){return act(t.c,WEEKS[i]);})).toFixed(1));}
   var g='';[0,25,50,75,100].forEach(function(p){g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(p)+'" y2="'+y(p)+'" stroke="var(--hair)"/><text x="'+(L-6)+'" y="'+(y(p)+4)+'" font-size="10" text-anchor="end" fill="var(--mute)">'+p+'%</text>';});
   var lm='';WEEKS.forEach(function(w,i){var d=utc(cut(w));if(i===0||d.getUTCDate()<=7)lm+='<text x="'+x(i)+'" y="'+(H-B+16)+'" font-size="10" text-anchor="middle" fill="var(--mute)">'+MON[d.getUTCMonth()]+'</text>';});
@@ -194,8 +197,11 @@ function scurve(){var W=640,H=250,L=40,R=12,T=12,B=34,n=WEEKS.length,x=function(
   return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="กราฟ S-Curve แผนเทียบผลงานจริง">'+g+lm+
    '<line x1="'+x(p1)+'" x2="'+x(p1)+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--brand)" stroke-dasharray="3 3"/><text x="'+(x(p1)+4)+'" y="'+(T+10)+'" font-size="10" fill="var(--brand)">ส่งมอบ Phase 1</text>'+
    '<line x1="'+x(ci)+'" x2="'+x(ci)+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--ink)" stroke-width=".6"/>'+
-   '<polyline points="'+pl+'" fill="none" stroke="var(--plan)" stroke-width="2" stroke-dasharray="5 4"/>'+
+   (pl0?'<polyline points="'+pl0+'" fill="none" stroke="var(--hair)" stroke-width="2"/>':'')+'<polyline points="'+pl+'" fill="none" stroke="var(--plan)" stroke-width="2" stroke-dasharray="5 4"/>'+
    '<polyline points="'+ac.join(' ')+'" fill="none" stroke="var(--brand)" stroke-width="2.5"/>'+(ac.length?'<circle cx="'+ac[ac.length-1].split(',')[0]+'" cy="'+ac[ac.length-1].split(',')[1]+'" r="4" fill="var(--brand)"/>':'')+'</svg>';}
+function dcell(t,f){var v=t[f],o=t[f+'0'],ch=v!==o,tip=ch?'แผน Rev.1: '+ds(o):'';
+  if(canWrite())return '<td title="'+tip+'"><input type="date" class="box nin mono" style="min-width:0;width:132px;font-size:12.5px'+(ch?';border-color:var(--brand);color:var(--brand);background:var(--brand-bg)':'')+'" data-k="dt:'+t.c+':'+f+'" data-dt="'+t.c+'" data-f="'+f+'" value="'+v+'" min="2026-10-01" max="2027-12-31">'+(ch?'<span class="who2" style="font-size:11px">เดิม '+ds(o)+'</span>':'')+'</td>';
+  return '<td class="mono" style="font-size:12.5px;white-space:nowrap'+(ch?';color:var(--brand)':'')+'" title="'+tip+'">'+ds(v)+(ch?' *':'')+'</td>';}
 function ownCell(t){var w=who(t.k);return '<span style="font-size:12.5px" title="'+esc(catName(t.k))+'">'+(w?esc(w):'<span class="who2 none">ยังไม่ระบุ</span>')+'</span>';}
 function whoLine(t){var w=who(t.k);return ' · <span style="color:var(--brand)">'+(w?esc(w):catName(t.k)+': ยังไม่ระบุผู้รับผิดชอบ')+'</span>';}
 var MCFG=null,VOS=[],VOAMT={},ISS=[],CLAIMS=[],SHOWCLOSED=false;
@@ -239,7 +245,7 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
    '<div class="kpi"><span class="lb">ระยะเวลาผ่านไป</span><b>'+el+'/212</b><small>วัน ('+f1(el/212*100)+'%) เหลือ '+(212-el)+' วัน</small></div>'+
    '<div class="kpi"><span class="lb">Phase 1 ส่วนหน้า</span><b>'+f1(agg(p1,function(t){return act(t.c,WK);}))+'%</b><small>แผน '+f1(agg(p1,function(t){return planPct(t,c);}))+'% · ส่งมอบ 1 มี.ค. 70</small></div>'+
    '<div class="kpi"><span class="lb">Phase 2 ส่วนหลัง</span><b>'+f1(agg(p2,function(t){return act(t.c,WK);}))+'%</b><small>แผน '+f1(agg(p2,function(t){return planPct(t,c);}))+'% · ส่งมอบ 31 พ.ค. 70</small></div></div>'+
-   '<div class="two"><div class="chart"><h3>S-Curve แผนงานเทียบผลงานจริง (สะสม)</h3><div class="leg"><span><i style="background:var(--plan)"></i>แผนงาน Rev.1</span><span><i style="background:var(--brand)"></i>ผลงานจริง</span></div>'+scurve()+'</div>'+
+   '<div class="two"><div class="chart"><h3>S-Curve แผนงานเทียบผลงานจริง (สะสม)</h3><div class="leg"><span><i style="background:var(--plan)"></i>'+(nChanged()?'แผนงานปัจจุบัน (ปรับ '+nChanged()+' รายการ)':'แผนงาน Rev.1')+'</span>'+(nChanged()?'<span><i style="background:var(--hair)"></i>แผน Rev.1 เดิม</span>':'')+'<span><i style="background:var(--brand)"></i>ผลงานจริง</span></div>'+scurve()+'</div>'+
    '<div class="blk"><h3>ความก้าวหน้าแยกหมวดงาน</h3>'+PLAN.groups.map(function(g){var L=TASKS.filter(function(t){return t.g===g.c;}),pp=agg(L,function(t){return planPct(t,c);}),pa=agg(L,function(t){return act(t.c,WK);}),k=stat(pp,pa)[0];
      return '<div class="trd" style="grid-template-columns:minmax(0,1fr) 110px 46px;padding:5px 0"><span title="'+esc(g.n)+'">'+g.c+'. '+esc(g.n)+'</span>'+bar(pp,pa,k)+'<span class="num">'+f1(pa)+'%</span></div>';}).join('')+
    '<p style="font-size:12px;color:var(--mute);margin:8px 0 0">แถบสี = ผลงานจริง · เส้นดำ = ตำแหน่งตามแผน</p></div></div></section>';
@@ -257,7 +263,7 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
      L.map(function(t,i){var tp=planPct(t,c),ta=act(t.c,WK);return '<div class="trd"><span title="'+esc(t.n+(who(t.k)?' · '+who(t.k):''))+'">'+TRS[i]+(who(t.k)?'<small class="who2" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(who(t.k))+'</small>':'')+'</span>'+bar(tp,ta,stat(tp,ta)[0])+'<span class="num">'+Math.round(ta)+'%</span></div>';}).join('')+'</div>';});
   h+='</div></section>';
   /* 4 detail */
-  h+='<section class="sheet ag" id="a4"><div class="dh"><span class="no">วาระที่ 4</span><h2>ความก้าวหน้าตามแผนงาน (รายละเอียด)</h2><span class="ct">'+(cw?'กรอก % ผลงานจริงของสัปดาห์นี้ ระบบบันทึกให้อัตโนมัติ · ช่องเส้นประ = ใช้ค่าจากสัปดาห์ก่อน':'ดูอย่างเดียว · แก้ไขได้เฉพาะผู้ดูแล')+'</span></div>'+
+  h+='<section class="sheet ag" id="a4"><div class="dh"><span class="no">วาระที่ 4</span><h2>ความก้าวหน้าตามแผนงาน (รายละเอียด)</h2><span class="ct">'+(cw?'กรอก % ผลงานจริงของสัปดาห์นี้ ระบบบันทึกให้อัตโนมัติ · ช่องเส้นประ = ใช้ค่าจากสัปดาห์ก่อน':'ดูอย่างเดียว · แก้ไขได้เฉพาะผู้ดูแล')+'</span></div>'+(nChanged()?'<p style="margin:-6px 0 10px;font-size:13px;color:var(--brand)">ปรับวันเริ่ม / วันเสร็จจากแผน Rev.1 แล้ว '+nChanged()+' รายการ (ช่องสีน้ำตาล · ชี้ที่ช่องเพื่อดูวันเดิม) % ตามแผนทุกวาระคำนวณจากวันที่ปรับแล้ว</p>':(cw?'<p style="margin:-6px 0 10px;font-size:13px;color:var(--mute)">แก้วันเริ่ม / วันเสร็จได้ในตาราง % ตามแผน ภาพรวม Phase รายอาคาร และแผน 2 สัปดาห์จะคำนวณใหม่ให้อัตโนมัติ</p>':''))+
    '<div class="tools"><select class="sel" id="only" aria-label="กรองรายการ">'+[['','แสดงทุกรายการ'],['due','เฉพาะงานที่ถึงกำหนดแล้ว'],['late','เฉพาะงานล่าช้า'],['P1','เฉพาะ Phase 1'],['P2','เฉพาะ Phase 2']].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===FLT.only?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'+
    '<select class="sel" id="cat" aria-label="กรองตามประเภทงาน"><option value="">ทุกประเภทงาน / ผู้รับผิดชอบ</option>'+CATS.map(function(c){return '<option value="'+c[0]+'"'+(c[0]===FLT.cat?' selected':'')+'>'+c[1]+(who(c[0])?' — '+esc(who(c[0])):'')+'</option>';}).join('')+'</select>'+
    '<input class="box" id="q" type="search" placeholder="ค้นหารายการ" value="'+esc(FLT.q)+'" style="flex:1 1 200px"></div>';
@@ -270,7 +276,7 @@ function render(){var c=cut(WK),R=REP[WK]||{},cw=canWrite();
     vis.forEach(function(t){if(t.b&&t.b!==lastB){lastB=t.b;var b=PLAN.bldg.find(function(x){return x.c===t.b;}),BL=TASKS.filter(function(x){return x.b===t.b;});
         h+='<tr class="sub"><td class="c">'+t.b+'</td><td colspan="'+(M()?5:4)+'">'+esc(b.n)+'</td><td class="num">'+f1(agg(BL,function(x){return planPct(x,c);}))+'</td><td class="num">'+f1(agg(BL,function(x){return act(x.c,WK);}))+'</td><td colspan="5"></td></tr>';}
       var tp=planPct(t,c),r=rec(t.c,WK),ta=r.pct,s=stat(tp,ta),inh=r.w&&r.w!==WK;
-      h+='<tr><td class="c">'+t.c+'</td><td>'+(t.b?'– ':'')+esc(t.n)+'</td>'+(M()?'<td class="num">'+(VAL[t.c]?money(VAL[t.c]):'-')+'</td>':'')+'<td class="num">'+f1(t.w*100)+'%</td><td class="mono" style="font-size:12.5px;white-space:nowrap">'+ds(t.s)+'</td><td class="mono" style="font-size:12.5px;white-space:nowrap">'+ds(t.e)+'</td><td class="num">'+f1(tp)+'</td>'+
+      h+='<tr><td class="c">'+t.c+'</td><td>'+(t.b?'– ':'')+esc(t.n)+'</td>'+(M()?'<td class="num">'+(VAL[t.c]?money(VAL[t.c]):'-')+'</td>':'')+'<td class="num">'+f1(t.w*100)+'%</td>'+dcell(t,'s')+dcell(t,'e')+'<td class="num">'+f1(tp)+'</td>'+
        '<td class="num">'+(cw?'<input class="box pin mono'+(inh?' inh':'')+'" type="number" min="0" max="100" step="5" data-pct="'+t.c+'" value="'+(r.w?+ta:'')+'" placeholder="0" title="'+(inh?'ค่าจาก '+wkLabel(r.w):'')+'" aria-label="ผลงานจริง % '+esc(t.c)+'">':f1(ta))+'</td>'+
        '<td class="pbw">'+bar(tp,ta,s[0])+'</td><td class="num">'+vtxt(ta-tp)+'</td><td><span class="tag t-'+s[0]+'">'+s[1]+'</span></td><td style="min-width:120px">'+ownCell(t)+'</td>'+
        '<td>'+(cw?'<input class="box nin" data-note="'+t.c+'" value="'+esc(r.w===WK?r.note:'')+'" placeholder="'+esc(inh&&r.note?r.note:'')+'">':esc(r.note))+'</td></tr>';});
@@ -347,6 +353,10 @@ function go(wk){if(WEEKS.indexOf(wk)<0)return;WK=wk;try{sessionStorage.setItem('
 document.addEventListener('change',function(e){var t=e.target;if(t.id==='wksel')return go(t.value);if(t.id==='only'){FLT.only=t.value;rr();return;}if(t.id==='cat'){FLT.cat=t.value;rr();return;}if(t.id==='showclosed'){SHOWCLOSED=t.checked;rr();return;}
   if(t.dataset.iss||t.dataset.vo){var kind=t.dataset.iss?'iss':'vo',L=kind==='iss'?ISS:VOS,x=L.find(function(y){return y.id===(t.dataset.iss||t.dataset.vo);});if(!x)return;var f=t.dataset.f,v=t.value;
     if(f==='days')v=parseInt(v,10)||0;if((f==='due'||f==='found'||f==='submit_date')&&!v)v=null;if(x[f]===v)return;x[f]=v;var row={};row[f]=v;rr();save(sb.from(kind==='iss'?'mon_issues':'mon_vo').update(row).eq('id',x.id));return;}
+  if(t.dataset.dt){var tk=TASKS.find(function(y){return y.c===t.dataset.dt;});if(!tk)return;var fd=t.dataset.f,nv=t.value||tk[fd+'0'];
+    var ns=fd==='s'?nv:tk.s,ne=fd==='e'?nv:tk.e;if(ne<ns){toast('วันเสร็จต้องไม่ก่อนวันเริ่ม');rr();return;}
+    tk.s=ns;tk.e=ne;rr();if(ns===tk.s0&&ne===tk.e0)save(sb.from('mon_dates').delete().eq('task',tk.c));else save(sb.from('mon_dates').upsert({task:tk.c,s:ns,e:ne}));
+    toast('ปรับ '+tk.c+' เป็น '+ds(ns)+' – '+ds(ne));return;}
   if(t.dataset.voamt){var id=t.dataset.voamt,amt=t.value===''?0:+t.value;if(isNaN(amt)){toast('กรอกตัวเลข');return;}VOAMT[id]=amt;rr();save(sb.from('mon_vo_amt').upsert({id:id,amount:amt}));return;}
   if(t.dataset.own){var k=t.dataset.own,v=t.value.trim();if((OWN[k]||'')===v)return;OWN[k]=v;rr();save(sb.from('mon_owners').upsert({cat:k,names:v}));return;}
   if(t.dataset.pct){if(t.value!==''&&(isNaN(+t.value)||+t.value<0||+t.value>100)){toast('กรอกตัวเลข 0–100');rr();return;}setPct(t.dataset.pct,t.value,null);return;}
@@ -373,6 +383,7 @@ async function load(){var r=await Promise.all([sb.from('mon_progress').select('w
   VAL=null;if(ROLE==='admin'){var vr=await sb.from('mon_values').select('task,v');if(!vr.error&&vr.data&&vr.data.length){VAL={};vr.data.forEach(function(x){VAL[x.task]=+x.v;});}}
   var r2=await Promise.all([sb.from('mon_vo').select('*'),sb.from('mon_issues').select('*')]);r2.forEach(function(x){if(x.error)throw x.error;});
   VOS=r2[0].data;ISS=r2[1].data;
+  var md=await sb.from('mon_dates').select('task,s,e');TASKS.forEach(function(t){t.s=t.s0;t.e=t.e0;});if(!md.error)md.data.forEach(function(x){var t=TASKS.find(function(y){return y.c===x.task;});if(t){t.s=x.s;t.e=x.e;}});
   var mc=await sb.from('mon_meeting_cfg').select('*').eq('id',1).maybeSingle();MCFG=mc.error?null:mc.data;
   VOAMT={};if(ROLE==='admin'){var va=await sb.from('mon_vo_amt').select('id,amount');if(!va.error)va.data.forEach(function(x){VOAMT[x.id]=+x.amount;});}
   REP={};r[1].data.forEach(function(x){REP[x.week]=x;});OWN={};r[2].data.forEach(function(x){OWN[x.cat]=x.names||'';});if(r[3].data&&r[3].data.display_name)ME.name=r[3].data.display_name;SY.err=null;}
@@ -385,7 +396,7 @@ document.addEventListener('submit',async function(e){if(e.target.id!=='login')re
 async function enter(s){ME={id:s.user.id,email:s.user.email,name:s.user.email};gate('<p class="gnote">กำลังโหลดข้อมูล…</p>');
   var r=await sb.rpc('mtg_role');if(r.error){showLogin('เชื่อมต่อฐานข้อมูลไม่สำเร็จ: '+r.error.message);return;}ROLE=r.data||'viewer';
   try{await load();}catch(e){showLogin('โหลดข้อมูลไม่สำเร็จ: '+(e.message||e));return;}
-  var ch=sb.channel('mon');['mon_progress','mon_reports','mon_owners','mon_vo','mon_issues'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},remote);});ch.subscribe();render();
+  var ch=sb.channel('mon');['mon_progress','mon_reports','mon_owners','mon_vo','mon_issues','mon_dates'].forEach(function(t){ch.on('postgres_changes',{event:'*',schema:'public',table:t},remote);});ch.subscribe();render();
   if(location.hash){var t=$(location.hash);if(t)t.scrollIntoView();}}
 async function boot(){if(!window.supabase){gate('<h1>โหลดระบบไม่สำเร็จ</h1><p class="gnote">ตรวจการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้านี้</p>');return;}
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});var s=await sb.auth.getSession();if(s.data&&s.data.session)enter(s.data.session);else showLogin();}
