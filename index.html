@@ -460,6 +460,24 @@ body.spot .dept.focus,body.spot .min.focus{opacity:1}
 .dbp{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
 body.ro .edit,body.ro .addrow,body.ro .c-act,body.ro .cal-add,body.ro [data-act="new"],body.ro [data-act="add-dept"],body.ro [data-act="del-dept"],body.ro .dfoot .bad,body.ro .dfoot [data-act="dup"],body.ro .madd{display:none!important}
 
+/* ---------- print / PDF ---------- */
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body{background:#fff;font-size:12px}
+  .top,.tools,.agenda,.menu,.toast,.dlg,.note,.edit,.ib,.kebab,.addrow,.c-act,.rhead span:last-child,.cal-add,.mtabs .btn,.alist,.search,.lnk,.acts,.dfoot,.noprint{display:none!important}
+  main{max-width:none;padding:0}.sheet,.panel{border:0;padding:0;box-shadow:none}
+  .arch{display:block}.adet{border:0;padding:0}
+  .row,.card,.ivrow,.rec,.kpi,.panel,.tchip,.cal-c{break-inside:avoid}
+  .dept,.min{break-inside:auto}
+  input,select,textarea,.sel,.in,.box,.pill,.mini{border-color:transparent!important;background-image:none!important;appearance:none;-webkit-appearance:none;box-shadow:none!important}
+  input[type=date]::-webkit-calendar-picker-indicator{display:none}
+  textarea{resize:none;overflow:visible}
+  .rise,.anim .rise{animation:none!important;opacity:1!important;transform:none!important}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ov{display:grid;grid-template-columns:repeat(12,minmax(0,1fr))}
+  .printhead{display:block!important}
+}
+.printhead{display:none;font:700 15px var(--f-display);margin:0 0 8px}
 /* ---------- small screens ---------- */
 @media (max-width:1000px){.c8,.c7,.c6,.c5,.c4{grid-column:span 12}}
 @media (max-width:900px){
@@ -689,7 +707,7 @@ function reportHtml(){
    '<select class="f sel" data-flt="project" data-k="flt:project" aria-label="กรองโครงการ"><option value="">ทุกโครงการ</option>'+projects().map(function(p){return '<option'+(p===F.project?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select>'+
    '<select class="f sel" data-flt="owner" data-k="flt:owner" aria-label="กรองผู้รับผิดชอบ"><option value="">ทุกคน</option>'+people().map(function(p){return '<option'+(p.name===F.owner?' selected':'')+'>'+esc(p.name)+'</option>';}).join('')+'</select>'+
    '<select class="f sel" data-flt="sort" data-k="flt:sort" aria-label="เรียงลำดับ">'+opts([['due','เรียงตามกำหนดเสร็จ'],['priority','เรียงตามความสำคัญ'],['status','เรียงตามสถานะ'],['manual','เรียงตามลำดับที่เพิ่ม']],F.sort)+'</select><span class="sp"></span>'+
-   '<button class="btn q edit" data-act="undo"'+(undo.length?'':' disabled')+'>ย้อนกลับ</button><button class="btn q edit" data-act="export-menu" data-k="exp" aria-haspopup="menu" aria-expanded="false">ส่งออก '+IC.chev+'</button>'+
+   '<button class="btn q edit" data-act="undo"'+(undo.length?'':' disabled')+'>ย้อนกลับ</button><button class="btn q" data-act="print">พิมพ์ / PDF</button><button class="btn q edit" data-act="export-menu" data-k="exp" aria-haspopup="menu" aria-expanded="false">ส่งออก '+IC.chev+'</button>'+
    '<button class="btn'+(meet?' pri':'')+'" data-act="meet-toggle">'+(meet?'จบการประชุม':'โหมดประชุม')+'</button></div>';
   var rn=0;S.depts.forEach(function(dp,x){
     var rows=vis.filter(function(i){return i.dept===dp.id;}).sort(sorter),bad=rows.filter(function(i){return i.status==='delayed'||isOver(i)||isUrgent(i);}).length;
@@ -754,7 +772,7 @@ function minutesHtml(){var q=(F.mq||'').trim().toLowerCase(),all=S.meetings.slic
      '<h4>ผู้เข้าร่วม</h4><p style="margin:0">'+esc(cur.attendees||'ไม่ได้ระบุ')+'</p>'+
      '<h4>มติที่ประชุม</h4>'+(d1.length?'<ol>'+d1.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ol>':'<p class="n" style="margin:0">-</p>')+
      '<h4>งานที่ต้องตามต่อ</h4>'+(f1.length?'<ol>'+f1.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ol>':'<p class="n" style="margin:0">-</p>')+
-     '<div class="dfoot" style="justify-content:flex-start"><button class="btn" data-act="meet-open" data-v="'+cur.id+'">เปิดในรายงาน'+(canWrite()?' / แก้ไข':'')+'</button><button class="btn q" data-act="meet-copy" data-v="'+cur.id+'">คัดลอก / ส่ง LINE</button></div>';}
+     '<div class="dfoot" style="justify-content:flex-start"><button class="btn" data-act="meet-open" data-v="'+cur.id+'">เปิดในรายงาน'+(canWrite()?' / แก้ไข':'')+'</button><button class="btn q" data-act="meet-copy" data-v="'+cur.id+'">คัดลอก / ส่ง LINE</button><button class="btn q" data-act="print">พิมพ์ / PDF</button></div>';}
   return h+'</div></div></section>';}
 
 /* ---------- setup ---------- */
@@ -816,7 +834,7 @@ function invoiceHtml(){
   L.forEach(function(i){var n=invInfo(i),a=amt(i);tot+=a;if(n.cur<0){doneA+=a;doneN++;}else{st[n.cur]++;sa[n.cur]+=a;if(i.inv.due&&i.inv.due<TODAY)late++;}if(n.back)back++;});
   var mx=Math.max.apply(null,[1,doneN].concat(st)),c=0;
   var h=notesHtml()+'<section class="sheet"><h1 class="h">สถานะงวดงานและการออก Invoice</h1><p class="sub">ขั้นตอน: 1. จัดทำเอกสาร → 2. บริหารโครงการ → 3. ผู้บริหารเซ็น → 4. บช.ออก Invoice · กดที่แถวเพื่ออัปเดตสถานะ</p>'+
-   '<div class="tools"><select class="f sel" data-flt="project" data-k="flt:project" aria-label="กรองโครงการ"><option value="">ทุกโครงการ</option>'+projects().map(function(p){return '<option'+(p===F.project?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><span class="sp"></span>'+(canWrite()?'<button class="btn pri" data-act="inv-new">+ เพิ่มงวดงาน</button>':'')+'</div>'+
+   '<div class="tools"><select class="f sel" data-flt="project" data-k="flt:project" aria-label="กรองโครงการ"><option value="">ทุกโครงการ</option>'+projects().map(function(p){return '<option'+(p===F.project?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><span class="sp"></span><button class="btn q" data-act="print">พิมพ์ / PDF</button>'+(canWrite()?'<button class="btn pri" data-act="inv-new">+ เพิ่มงวดงาน</button>':'')+'</div>'+
    '<div class="sum" style="grid-template-columns:1fr"><div class="figs"><div><b>'+L.length+'</b>งวดทั้งหมด</div><div><b>'+money(tot)+'</b>ยอดรวม (บาท)</div><div><b>'+money(doneA)+'</b>ออก Invoice แล้ว ('+doneN+' งวด)</div><div class="'+(tot-doneA>0?'alert':'')+'"><b>'+money(tot-doneA)+'</b>ยังไม่ออก Invoice ('+(L.length-doneN)+' งวด)</div><div class="'+(late?'alert':'')+'"><b>'+late+'</b>เลยกำหนดส่งงวด</div><div class="'+(back?'alert':'')+'"><b>'+back+'</b>ส่งกลับแก้ไข</div></div></div>'+
    '<div class="pipe" style="grid-template-columns:repeat(5,minmax(0,1fr));margin:16px 0 8px">'+INV_STEPS.map(function(s,x){return '<div class="pp pre" style="--i:'+x+'"><b class="mono">'+st[x]+'</b><span class="pp-bar" style="height:80px"><i style="height:'+(st[x]/mx*100)+'%"></i></span><small>รอที่ '+(x+1)+'. '+s+'<br>'+money(sa[x])+' บ.</small></div>';}).join('')+
    '<div class="pp" style="--i:4"><b class="mono">'+doneN+'</b><span class="pp-bar" style="height:80px"><i style="height:'+(doneN/mx*100)+'%;background:var(--ok)"></i></span><small>ออก Invoice แล้ว<br>'+money(doneA)+' บ.</small></div></div>';
@@ -844,7 +862,10 @@ function openMenu(btn,items){closeMenu();var m=$('#menu');
 function closeMenu(){if(!menuCtx)return;menuCtx.btn.setAttribute('aria-expanded','false');$('#menu').hidden=true;menuCtx=null;}
 function rowMenu(btn,it){var others=S.depts.filter(function(d){return d.id!==it.dept;});
   openMenu(btn,[{label:'เปิดรายละเอียด',ic:IC.open,run:function(){dlg.item=it.id;itemDlg();}},{label:'ทำสำเนา',ic:IC.dup,run:function(){dupItem(it);}},{label:'ติดตามงวดงาน / Invoice',ic:IC.sheet,run:function(){openInv(it);}}].concat(others.length?['-',{head:'ย้ายไปฝ่าย'}]:[],others.map(function(d){return {label:d.name,ic:IC.move,run:function(){if(setItem(it,'dept',d.id)){rerender();toast('ย้ายไป '+d.name+' แล้ว','undo','ย้อนกลับ');}}};}),['-',{label:'ลบรายการ',ic:IC.del,danger:true,run:function(){removeItem(it);}}]));}
-function exportMenu(btn){openMenu(btn,[{label:'คัดลอกสรุปส่งกลุ่ม LINE',ic:IC.line,run:function(){textDlg('สรุปสำหรับส่งในกลุ่ม LINE',summaryText(),true);}},{label:'ส่งออกเป็น Excel',hint:'.csv',ic:IC.sheet,run:doCsv},{label:'สำรองข้อมูลทั้งหมด',hint:'.json',ic:IC.disk,run:doJson}]);}
+function doPrint(){closeMenu();if(dlg.mode)closeDlg();var v=view(),t={overview:'ภาพรวม',report:'รายงานติดตามงานประจำสัปดาห์',invoice:'สถานะงวดงานและการออก Invoice',board:'บอร์ดงาน',calendar:'ปฏิทิน',minutes:'บันทึกการประชุม',setup:'ตั้งค่า'}[v]||'';
+  var ph=$('#printhead');if(!ph){ph=document.createElement('div');ph.id='printhead';ph.className='printhead';$('#view').parentNode.insertBefore(ph,$('#view'));}
+  ph.textContent=S.meta.company+' · '+t+' · พิมพ์เมื่อ '+dFull(TODAY);setTimeout(function(){window.print();},60);}
+function exportMenu(btn){openMenu(btn,[{label:'พิมพ์ / บันทึกเป็น PDF',hint:'หน้านี้',ic:IC.sheet,run:doPrint},{label:'คัดลอกสรุปส่งกลุ่ม LINE',ic:IC.line,run:function(){textDlg('สรุปสำหรับส่งในกลุ่ม LINE',summaryText(),true);}},{label:'ส่งออกเป็น Excel',hint:'.csv',ic:IC.sheet,run:doCsv},{label:'สำรองข้อมูลทั้งหมด',hint:'.json',ic:IC.disk,run:doJson}]);}
 
 /* ---------- render ---------- */
 var CUR=(function(){var v=location.hash.slice(1);return VIEWS.indexOf(v)<0?'overview':v;})();
@@ -987,6 +1008,7 @@ document.addEventListener('click',function(e){
   else if(a==='export-menu'){if(wasMenu===b)return;exportMenu(b);}
   else if(a==='open'){if(e.target.closest('button'))return;dlg.item=b.dataset.card;itemDlg();}
   else if(a==='open-item'){dlg.item=v;itemDlg();}
+  else if(a==='print')doPrint();
   else if(a==='open-ev'){dlg.item=v;evDlg();}
   else if(a==='ev-new')newEvent(TODAY);
   else if(a==='ev-del'){var de=(S.events||[]).find(function(x){return x.id===dlg.item;});if(de){mutate(function(){S.events=S.events.filter(function(x){return x!==de;});});closeDlg();rerender();toast('ลบเหตุการณ์แล้ว','undo','ย้อนกลับ');}}
